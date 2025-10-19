@@ -25,7 +25,6 @@ html { accent-color: var(--color-accent); }
 *::after { box-sizing: border-box; }
 
 body {
-  /* Typography + readable line length*/
   font: 100%/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
   background: white;
@@ -197,4 +196,70 @@ hr {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================================
+   DARK THEME EXTENSION (Lab 3)
+   Keeps Lab 2 look but switches palette to dark background
+   ============================================================ */
+html[data-theme="dark"] {
+  --text: oklch(93% 0 0); /* light text */
+  --border: oklch(30% 0.03 250);
+  --sep: oklch(40% 0.03 250);
+  --accent-weak-bg: color-mix(in oklab, var(--ucsd-navy) 80%, black);
+  --accent-mid-bg: color-mix(in oklab, var(--ucsd-navy) 90%, black);
+  --gold-weak-bg: color-mix(in oklab, var(--ucsd-gold) 30%, black);
+  --gold-mid-bg: color-mix(in oklab, var(--ucsd-gold) 50%, black);
+  background: oklch(15% 0 250);
+}
+
+html[data-theme="dark"] body {
+  background: oklch(15% 0 250);
+  color: var(--text);
+}
+
+/* Navigation: gold text & underline in dark mode */
+html[data-theme="dark"] nav {
+  border-bottom: 1px solid var(--sep);
+  background: var(--accent-mid-bg);
+}
+html[data-theme="dark"] nav a {
+  color: var(--ucsd-gold);
+}
+html[data-theme="dark"] nav a:hover {
+  border-bottom-color: var(--ucsd-gold);
+  background: var(--gold-weak-bg);
+}
+html[data-theme="dark"] nav a[aria-current="page"],
+html[data-theme="dark"] nav a.current {
+  border-bottom-color: var(--ucsd-gold);
+  background: color-mix(in oklab, var(--ucsd-navy) 60%, black);
+  color: var(--ucsd-gold);
+}
+html[data-theme="dark"] nav a[aria-current="page"]:hover,
+html[data-theme="dark"] nav a.current:hover {
+  border-bottom-color: var(--ucsd-gold);
+  background: color-mix(in oklab, var(--ucsd-navy) 40%, black);
+}
+
+/* Inputs, buttons, cards adapt automatically */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: oklch(20% 0 250);
+  border-color: var(--sep);
+  color: var(--text);
+}
+html[data-theme="dark"] button {
+  background: var(--ucsd-gold);
+  color: var(--ucsd-navy);
+  border-color: var(--ucsd-gold);
+}
+html[data-theme="dark"] .projects > article {
+  background: color-mix(in oklab, var(--ucsd-navy) 75%, black);
+  border-color: var(--sep);
+}
+html[data-theme="dark"] .projects > article:hover {
+  background: color-mix(in oklab, var(--ucsd-gold) 30%, var(--ucsd-navy));
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
 }
