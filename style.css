@@ -33,26 +33,27 @@ img { max-width: 100%; height: auto; display: block; }
 
 nav[data-auto] {
   padding: 0.75rem 1rem;
-  background: transparent; 
-  border: 0; 
+  background: transparent;
+  border: 0;
 }
 
 nav[data-auto] a {
   text-decoration: none;
-  margin-right: 1rem; 
-  padding: 0.25rem 0.6rem; 
-  border-radius: 0.6rem;
+  margin-right: 1rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.5rem;
   font-weight: 600;
-  color: var(--nav-link); 
+  color: var(--nav-link);
 }
 
-nav[data-auto] a:hover { text-decoration: underline; }
+nav[data-auto] a:hover {
+  text-decoration: underline;
+}
 
 nav[data-auto] a.current,
 nav[data-auto] a[aria-current="page"] {
   background: var(--ucsd-blue);
   color: white;
-  font-weight: 700;
 }
 
 html[data-theme="dark"] nav[data-auto] a.current,
