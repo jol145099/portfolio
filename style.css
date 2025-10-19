@@ -1,3 +1,4 @@
+
 :root {
   color-scheme: light dark;
   --ucsd-blue: #182b49;
@@ -15,6 +16,7 @@ html[data-theme="dark"] {
   --nav-link: var(--ucsd-gold);
 }
 
+
 html, body {
   background: var(--surface);
   color: var(--text);
@@ -29,38 +31,74 @@ html, body {
   padding: 0 1rem;
 }
 
-img { max-width: 100%; height: auto; display: block; }
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 
 nav[data-auto] {
-  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 3rem;                     /* space between links */
+  border-bottom: 1px solid #ccc; /* light divider line */
+  padding: 1rem 0;
   background: transparent;
-  border: 0;
 }
 
 nav[data-auto] a {
+  position: relative;
   text-decoration: none;
-  margin-right: 1rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--nav-link);
+  padding: 0.25rem 0;
+  transition: color 0.2s ease;
+}
+
+nav[data-auto] a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  transition: background 0.25s ease;
 }
 
 nav[data-auto] a:hover {
-  text-decoration: underline;
+  color: var(--ucsd-blue);
+}
+nav[data-auto] a:hover::after {
+  background: #f48fb1; 
+}
+
+nav[data-auto] a.current::after,
+nav[data-auto] a[aria-current="page"]::after {
+  background: #b0bec5;
 }
 
 nav[data-auto] a.current,
 nav[data-auto] a[aria-current="page"] {
-  background: var(--ucsd-blue);
-  color: white;
+  font-weight: 700;
 }
 
-html[data-theme="dark"] nav[data-auto] a.current,
-html[data-theme="dark"] nav[data-auto] a[aria-current="page"] {
-  background: transparent;
+html[data-theme="dark"] nav[data-auto] {
+  border-bottom: 1px solid #444;
+}
+
+html[data-theme="dark"] nav[data-auto] a {
   color: var(--ucsd-gold);
-  text-decoration: underline;
+}
+
+html[data-theme="dark"] nav[data-auto] a.current::after,
+html[data-theme="dark"] nav[data-auto] a[aria-current="page"]::after {
+  background: var(--ucsd-gold);
+}
+
+html[data-theme="dark"] nav[data-auto] a:hover::after {
+  background: #e91e63;
 }
 
 .theme-switcher {
@@ -78,7 +116,10 @@ html[data-theme="dark"] nav[data-auto] a[aria-current="page"] {
   align-items: center;
   font: inherit;
 }
-.theme-switcher select { font: inherit; }
+.theme-switcher select {
+  font: inherit;
+}
+
 
 .card {
   border: 1px solid var(--border);
@@ -88,12 +129,17 @@ html[data-theme="dark"] nav[data-auto] a[aria-current="page"] {
   background: color-mix(in lch, var(--surface) 92%, var(--text) 8%);
 }
 
+
 form label {
   display: grid;
   gap: 0.4rem;
   margin: 0.5rem 0;
 }
-input, textarea, select, button {
+
+input,
+textarea,
+select,
+button {
   font: inherit;
   padding: 0.55rem 0.6rem;
   border-radius: 0.5rem;
@@ -101,15 +147,24 @@ input, textarea, select, button {
   background: var(--surface);
   color: var(--text);
 }
+
 button {
   background: var(--ucsd-blue);
   color: #fff;
   border: none;
   cursor: pointer;
 }
-button:hover { filter: brightness(1.05); }
 
-.muted { color: var(--muted); font-size: 0.9rem; }
+button:hover {
+  filter: brightness(1.05);
+}
+
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .noscript {
   padding: 0.75rem 1rem;
   background: #ffefc2;
