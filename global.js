@@ -1,166 +1,169 @@
+// ============ Site bootstrap ============
 console.log("IT'S ALIVE!");
 
-document.addEventListener('DOMContentLoaded', () => {
-  injectNav();
-  markCurrentLink();
-  injectThemeSwitcher();
-  applySavedTheme();
-  wireContactForm();
+document.addEventListener("DOMContentLoaded", () => {
+  injectNav();           // build nav on every page
+  markCurrentLink();     // highlight current page
+  ensureThemeSwitcher(); // add Theme: [Automatic|Light|Dark] in top-right
+  applySavedOrSystemTheme(); // apply saved choice (or system if "auto")
+  wireContactForm();     // optional: mailto handler on contact page
 });
 
-
+// ============ Navigation (keeps Lab 2 look via your CSS) ============
 const NAV_ITEMS = [
-  { href: '/',              text: 'Home' },
-  { href: '/projects/',     text: 'Projects' },
-  { href: '/contact/',      text: 'Contact' },
-  { href: '/resume/',       text: 'Resume' },
-  { href: 'https://github.com/jol145099', text: 'GitHub', external: true }
+  { href: "/",          text: "Home" },
+  { href: "/projects/", text: "Projects" },
+  { href: "/contact/",  text: "Contact" },
+  { href: "/resume/",   text: "Resume" },
+  { href: "https://github.com/jol145099", text: "GitHub", external: true },
 ];
 
-
+// GitHub Pages repo base (user.github.io/<repo>/...)
 function basePath() {
-  const isGhPages = location.hostname.endsWith('.github.io');
-  const parts = location.pathname.split('/').filter(Boolean); // ["repo", "subdir", ...]
-  if (isGhPages && parts.length > 0) {
-    return `/${parts[0]}`;
-  }
-  return '';
+  const isGhPages = location.hostname.endsWith(".github.io");
+  const parts = location.pathname.split("/").filter(Boolean);
+  if (isGhPages && parts.length > 0) return `/${parts[0]}`;
+  return "";
 }
-
 function absolutize(href) {
-  if (href.startsWith('http')) return href;
+  if (href.startsWith("http")) return href;
   return basePath() + href;
 }
 
 function injectNav() {
-  document.querySelectorAll('nav').forEach(n => {
-    if (!n.hasAttribute('data-auto')) n.remove();
-  });
-
-  const nav = document.createElement('nav');
-  nav.setAttribute('data-auto', 'true');
-
-  const ul = document.createElement('ul');
-  for (const item of NAV_ITEMS) {
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.textContent = item.text;
-    a.href = absolutize(item.href);
-
-    if (item.external) {
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-    }
-
-    li.appendChild(a);
-    ul.appendChild(li);
+  // If a hardcoded <nav> exists, leave it. If not, insert one.
+  let nav = document.querySelector("nav");
+  if (!nav) {
+    nav = document.createElement("nav");
+    document.body.prepend(nav);
   }
-  nav.appendChild(ul);
 
-  document.body.prepend(nav);
+  // If the nav already has links, don't duplicate.
+  if (nav.querySelector("a")) return;
 
-  document.querySelectorAll('a[href^="http"]').forEach(a => {
-    if (!a.target) {
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+  // Allow both direct <a> and <ul>/<li> per your CSS
+  const frag = document.createDocumentFragment();
+  for (const item of NAV_ITEMS) {
+    const a = document.createElement("a");
+    a.href = absolutize(item.href);
+    a.textContent = item.text;
+    if (item.external) {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
     }
-  });
-}
+    frag.appendChild(a);
+  }
+  nav.appendChild(frag);
 
-function markCurrentLink() {
-  const here = normalizePath(location.pathname);
-
-  document.querySelectorAll('nav[data-auto] a').forEach(a => {
-    const target = normalizePath(new URL(a.href).pathname);
-    if (target === here) a.classList.add('current');
-  });
+  // Make it discoverable for your nav styles if you target [data-auto]
+  nav.setAttribute("data-auto", "true");
 }
 
 function normalizePath(pathname) {
   let p = pathname;
   const bp = basePath();
   if (bp && p.startsWith(bp)) p = p.slice(bp.length);
-  p = p.replace(/\/index\.html?$/i, '/');
-  if (!p.endsWith('/')) p += '/';
+  p = p.replace(/\/index\.html?$/i, "/");
+  if (!p.endsWith("/")) p += "/";
   return p;
 }
-
-const THEME_KEY = 'themePref'; // 'auto' | 'light' | 'dark'
-let mediaListener = null;
-
-function injectThemeSwitcher() {
-  const wrap = document.createElement('div');
-  wrap.className = 'theme-switcher';
-  wrap.innerHTML = `
-    <label>
-      Theme:
-      <select id="theme-select" aria-label="Theme">
-        <option value="auto">Automatic</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
-  `;
-  document.body.appendChild(wrap);
-
-  const select = wrap.querySelector('#theme-select');
-  select.value = localStorage.getItem(THEME_KEY) || 'auto';
-  select.addEventListener('change', () => {
-    const val = select.value;
-    localStorage.setItem(THEME_KEY, val);
-    applyTheme(val);
+function markCurrentLink() {
+  const here = normalizePath(location.pathname);
+  document.querySelectorAll("nav a").forEach(a => {
+    const target = normalizePath(new URL(a.href, location.href).pathname);
+    if (target === here) {
+      a.classList.add("current");
+      a.setAttribute("aria-current", "page");
+    }
   });
 }
 
-function applySavedTheme() {
-  applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+// ============ Theme switcher (Lab 3 behavior) ============
+const THEME_KEY = "theme";          // 'auto' | 'light' | 'dark'
+const MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
+let mediaListener = null;
+
+function ensureThemeSwitcher() {
+  // If already present (e.g., you hand-wrote it), don't duplicate.
+  if (document.querySelector(".theme-switcher")) return;
+
+  const wrap = document.createElement("div");
+  wrap.className = "theme-switcher";
+  wrap.innerHTML = `
+    <label for="theme-select">Theme:</label>
+    <select id="theme-select">
+      <option value="auto">Automatic</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  `;
+  document.body.appendChild(wrap);
+
+  const select = wrap.querySelector("#theme-select");
+  select.value = localStorage.getItem(THEME_KEY) || "auto";
+  select.addEventListener("change", () => {
+    const choice = select.value;
+    localStorage.setItem(THEME_KEY, choice);
+    applyTheme(choice);
+  });
+}
+
+function applySavedOrSystemTheme() {
+  const choice = localStorage.getItem(THEME_KEY) || "auto";
+  const select = document.querySelector("#theme-select");
+  if (select) select.value = choice;
+  applyTheme(choice);
 }
 
 function applyTheme(mode) {
-  const root = document.documentElement;
-  // clear prior listener
+  // remove old listener if switching away from auto
   if (mediaListener) {
-    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', mediaListener);
+    MEDIA.removeEventListener("change", mediaListener);
     mediaListener = null;
   }
 
-  if (mode === 'light') {
-    root.style.setProperty('color-scheme', 'light');
-    root.setAttribute('data-theme', 'light');
-  } else if (mode === 'dark') {
-    root.style.setProperty('color-scheme', 'dark');
-    root.setAttribute('data-theme', 'dark');
+  const root = document.documentElement;
+  root.removeAttribute("data-theme"); // reset
+
+  if (mode === "light") {
+    root.dataset.theme = "light";
+  } else if (mode === "dark") {
+    root.dataset.theme = "dark";
   } else {
-    // auto: follow OS; also keep data-theme in sync
-    root.style.removeProperty('color-scheme'); // uses :root default "light dark"
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    root.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
-    mediaListener = (e) => root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-    mq.addEventListener('change', mediaListener);
+    // auto = follow system *and* live-update on change
+    root.dataset.theme = MEDIA.matches ? "dark" : "light";
+    mediaListener = e => {
+      // only react when still in "auto"
+      const current = localStorage.getItem(THEME_KEY) || "auto";
+      if (current === "auto") {
+        root.dataset.theme = e.matches ? "dark" : "light";
+      }
+    };
+    MEDIA.addEventListener("change", mediaListener);
   }
 }
 
+// ============ Optional: contact form mailto handler ============
 function wireContactForm() {
-  const form = document.querySelector('#contactForm');
+  const form = document.querySelector("#contactForm");
   if (!form) return;
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
     const fd = new FormData(form);
 
-    const to = 'jol145@ucsd.edu';
+    // TODO: update with your real email
+    const to = "YOUR_EMAIL@EXAMPLE.COM";
 
-    const subject = `[Website] ${fd.get('subject')}`.trim();
-    const bodyLines = [
-      `Name: ${fd.get('name')}`,
-      `Email: ${fd.get('email')}`,
-      '',
-      fd.get('message')
-    ];
+    const subject = `[Website] ${fd.get("subject") ?? ""}`.trim();
+    const body = [
+      `Name: ${fd.get("name") ?? ""}`,
+      `Email: ${fd.get("email") ?? ""}`,
+      "",
+      fd.get("message") ?? ""
+    ].join("\n");
 
-    const url =
-      `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-
+    const url = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     location.href = url;
   });
 }

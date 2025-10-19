@@ -199,26 +199,27 @@ hr {
 }
 
 /* ============================================================
-   DARK THEME EXTENSION (Lab 3)
-   Keeps Lab 2 look but switches palette to dark background
+   DARK THEME (Lab 3) — no layout changes, just palette updates
+   Triggered by <html data-theme="dark"> (set by global.js)
    ============================================================ */
 html[data-theme="dark"] {
-  --text: oklch(93% 0 0); /* light text */
+  color-scheme: dark;
+  --text: oklch(93% 0 0);
   --border: oklch(30% 0.03 250);
   --sep: oklch(40% 0.03 250);
-  --accent-weak-bg: color-mix(in oklab, var(--ucsd-navy) 80%, black);
-  --accent-mid-bg: color-mix(in oklab, var(--ucsd-navy) 90%, black);
+  --accent-weak-bg: color-mix(in oklab, var(--ucsd-navy) 85%, black);
+  --accent-mid-bg: color-mix(in oklab, var(--ucsd-navy) 92%, black);
   --gold-weak-bg: color-mix(in oklab, var(--ucsd-gold) 30%, black);
   --gold-mid-bg: color-mix(in oklab, var(--ucsd-gold) 50%, black);
-  background: oklch(15% 0 250);
+  background: oklch(14% 0 250);
 }
 
 html[data-theme="dark"] body {
-  background: oklch(15% 0 250);
+  background: oklch(14% 0 250);
   color: var(--text);
 }
 
-/* Navigation: gold text & underline in dark mode */
+/* Nav: gold text/underline, navy-tinted background, keep same structure */
 html[data-theme="dark"] nav {
   border-bottom: 1px solid var(--sep);
   background: var(--accent-mid-bg);
@@ -239,10 +240,10 @@ html[data-theme="dark"] nav a.current {
 html[data-theme="dark"] nav a[aria-current="page"]:hover,
 html[data-theme="dark"] nav a.current:hover {
   border-bottom-color: var(--ucsd-gold);
-  background: color-mix(in oklab, var(--ucsd-navy) 40%, black);
+  background: color-mix(in oklab, var(--ucsd-navy) 45%, black);
 }
 
-/* Inputs, buttons, cards adapt automatically */
+/* Inputs/buttons/cards adapt without altering layout */
 html[data-theme="dark"] input,
 html[data-theme="dark"] textarea,
 html[data-theme="dark"] select {
@@ -256,10 +257,47 @@ html[data-theme="dark"] button {
   border-color: var(--ucsd-gold);
 }
 html[data-theme="dark"] .projects > article {
-  background: color-mix(in oklab, var(--ucsd-navy) 75%, black);
+  background: color-mix(in oklab, var(--ucsd-navy) 78%, black);
   border-color: var(--sep);
 }
 html[data-theme="dark"] .projects > article:hover {
   background: color-mix(in oklab, var(--ucsd-gold) 30%, var(--ucsd-navy));
   box-shadow: 0 2px 10px color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
+}
+
+/* ============================================================
+   Theme Switcher UI (Lab 3) — fixed top-right as in lab
+   ============================================================ */
+.theme-switcher {
+  position: fixed;
+  top: 0.8rem;
+  right: 0.8rem;
+  z-index: 2000;
+  background: color-mix(in oklab, var(--ucsd-navy) 5%, white);
+  border: 1px solid var(--sep);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  font: 0.95rem system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
+}
+.theme-switcher label { font-weight: 600; }
+.theme-switcher select {
+  font: inherit;
+  border: 1px solid var(--sep);
+  border-radius: 0.3rem;
+  background: white;
+  padding: 0.15rem 0.4rem;
+}
+
+html[data-theme="dark"] .theme-switcher {
+  background: color-mix(in oklab, var(--ucsd-navy) 85%, black);
+  border-color: var(--sep);
+}
+html[data-theme="dark"] .theme-switcher select {
+  background: color-mix(in oklab, var(--ucsd-navy) 70%, black);
+  color: var(--ucsd-gold);
+  border-color: var(--sep);
 }
