@@ -85,9 +85,8 @@ function normalizePath(pathname) {
   return p;
 }
 
-/* ---------- Theme (Step 4) ---------- */
-
-const THEME_KEY = 'themePref';
+const THEME_KEY = 'themePref'; // 'auto' | 'light' | 'dark'
+let mediaListener = null;
 
 function injectThemeSwitcher() {
   const wrap = document.createElement('div');
@@ -109,7 +108,7 @@ function injectThemeSwitcher() {
   select.addEventListener('change', () => {
     const val = select.value;
     localStorage.setItem(THEME_KEY, val);
-    applyTheme(val); 
+    applyTheme(val);
   });
 }
 
@@ -119,15 +118,27 @@ function applySavedTheme() {
 
 function applyTheme(mode) {
   const root = document.documentElement;
+  // clear prior listener
+  if (mediaListener) {
+    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', mediaListener);
+    mediaListener = null;
+  }
+
   if (mode === 'light') {
     root.style.setProperty('color-scheme', 'light');
+    root.setAttribute('data-theme', 'light');
   } else if (mode === 'dark') {
     root.style.setProperty('color-scheme', 'dark');
+    root.setAttribute('data-theme', 'dark');
   } else {
-    root.style.removeProperty('color-scheme');
+    // auto: follow OS; also keep data-theme in sync
+    root.style.removeProperty('color-scheme'); // uses :root default "light dark"
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    root.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+    mediaListener = (e) => root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+    mq.addEventListener('change', mediaListener);
   }
 }
-
 
 function wireContactForm() {
   const form = document.querySelector('#contactForm');
