@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact</title>
-    <link rel="stylesheet" href="../style.css">
-    <script type="module" src="../global.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact – JoJo Lin</title>
+  <link rel="stylesheet" href="../style.css" />
 </head>
 <body>
-    <nav>
-      <a href="../index.html">Home</a>
-      <a href="../projects/index.html">Projects</a>
-      <a href="index.html">Contact</a>
-      <a href="../resume/index.html">Resume</a>
-      <a href="https://github.com/jol145099" target="_blank">GitHub</a>
-    </nav>
-    
+  <main class="container">
     <h1>Contact</h1>
+    <p>Use the form below to reach me.</p>
 
-    <form action="mailto:your-email@example.com" method="POST" enctype="text/plain">
-    <label>
-      Your email:
-      <input type="email" name="email" required>
-    </label>
-    <br>
-    <label>
-      Subject:
-      <input name="subject">
-    </label>
-    <br>
-    <label>
-      Message:
-      <textarea name="body"></textarea>
-    </label>
-    <br>
-    <button>Send</button>
-  </form>
+    <form id="contactForm" class="card">
+      <label>Name
+        <input name="name" required />
+      </label>
+
+      <label>Email
+        <input type="email" name="email" required />
+      </label>
+
+      <label>Subject
+        <input name="subject" required />
+      </label>
+
+      <label>Message
+        <textarea name="message" rows="5" required></textarea>
+      </label>
+
+      <button type="submit">Send</button>
+      <p class="muted">This opens your default email client with a prefilled message.</p>
+    </form>
+  </main>
+
+  <script type="module" src="../global.js"></script>
 </body>
 </html>

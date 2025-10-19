@@ -1,200 +1,117 @@
-/* --------- Theme Palette --------- */
-:root{
-  /* UCSD brand colors */
-  --ucsd-navy: #182B49;
-  --ucsd-gold: #C69214;
+/* System-aware colors (Lab 3 Step 4.1) */
+:root {
+  color-scheme: light dark;
+  --ucsd-blue: #182b49;
+  --ucsd-gold: #c69214;
 
-  /* Core tokens */
-  --color-accent: var(--ucsd-navy);
-  --text: oklch(30% 0 0);
-  --border: oklch(90% 0.02 200);
-  --sep: oklch(80% 0.03 200);
-
-  /* Mixed tints for subtle UI states (modern browsers) */
-  --accent-weak-bg: color-mix(in oklab, var(--ucsd-navy) 8%, white);
-  --accent-mid-bg:  color-mix(in oklab, var(--ucsd-navy) 18%, white);
-  --gold-weak-bg:   color-mix(in oklab, var(--ucsd-gold) 14%, white);
-  --gold-mid-bg:    color-mix(in oklab, var(--ucsd-gold) 24%, white);
+  --surface: Canvas;
+  --text: CanvasText;
+  --muted: color-mix(in lch, CanvasText 45%, Canvas 55%);
+  --border: color-mix(in lch, CanvasText 20%, Canvas 80%);
 }
 
-html { accent-color: var(--color-accent); }
-
-/* --------- Baseline / Resets --------- */
-*,
-*::before,
-*::after { box-sizing: border-box; }
-
-body {
-  /* Typography + readable line length*/
-  font: 100%/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+html, body {
+  background: var(--surface);
   color: var(--text);
-  background: white;
-
-  /* Constrain width + center*/
-  max-width: 100ch;
-  margin-inline: max(1rem, (100% - 100ch) / 2);
-  padding-block: 1rem;
+  margin: 0;
+  padding: 0;
+  font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-img, svg, video {
-  max-width: 100%;
-  height: auto;
-  display: block;
+/* Layout */
+.container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
-/* --------- Headings --------- */
-h1 {
-  font-size: 400%;
-  line-height: 1.1;
-  text-wrap: balance;
-  margin-block: 0.5em 0.3em;
-}
-h1, h2, h3, h4, h5, h6 {
-  line-height: 1.1;
-  text-wrap: balance;
-}
+img { max-width: 100%; height: auto; display: block; }
 
-/* --------- Links & Focus Visibility --------- */
-a { color: inherit; text-decoration-thickness: .08em; }
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 0.2rem solid var(--ucsd-navy);
-  outline-offset: 0.1rem;
+/* Auto-injected nav (Lab 3 Step 3) */
+nav[data-auto] {
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(6px);
+  background: color-mix(in lch, var(--surface) 85%, var(--text) 15%);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  z-index: 1000;
 }
-
-/* --------- Navigation --------- */
-/* Works whether nav contains direct <a> or a <ul><li> list */
-nav {
+nav[data-auto] ul {
+  list-style: none;
   display: flex;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0;
-  margin-block-end: 1rem;
-  border-bottom: 1px solid var(--sep);
-  background: var(--accent-weak-bg);
 }
-
-/* Flatten list semantics visually if used */
-nav ul, nav li { display: contents; }
-
-/* DEFAULT: UCSD blue links */
-nav a {
-  flex: 1;
-  text-align: center;
+nav[data-auto] a {
   text-decoration: none;
-  padding: 0.6em 0.8em;
-  color: var(--ucsd-navy);
-  border-bottom: 0.4em solid transparent;
+  color: var(--ucsd-blue);
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.6rem;
+}
+nav[data-auto] a:hover { text-decoration: underline; }
+nav[data-auto] a.current {
+  background: var(--ucsd-blue);
+  color: white;
+  font-weight: 600;
 }
 
-/* Hover uses UCSD logo gold accent */
-nav a:hover {
-  border-bottom-color: var(--ucsd-gold);
-  background: var(--gold-weak-bg);
-}
-
-/* Current page highlight */
-nav a[aria-current="page"],
-nav a.current {
-  border-bottom-color: var(--ucsd-navy);
-  background: color-mix(in oklab, var(--ucsd-navy) 6%, white);
-  font-weight: 700;
-  color: var(--ucsd-navy);
-}
-
-/* Keep current state obvious on hover */
-nav a[aria-current="page"]:hover,
-nav a.current:hover {
-  border-bottom-color: var(--ucsd-gold);
-  background: color-mix(in oklab, var(--ucsd-navy) 10%, white);
-}
-
-/* --------- Forms --------- */
-input, textarea, button, select { font: inherit; color: inherit; }
-
-/* Block layout defaults (Step 3.2) */
-label, input, textarea, button, select { display: block; }
-
-input, textarea, select {
-  width: 100%;
-  padding: 0.55em 0.65em;
-  border: 1px solid var(--sep);
-  border-radius: 0.35rem;
-  background: white;
-}
-
-textarea { min-height: 8rem; resize: vertical; }
-
-button {
-  cursor: pointer;
-  border: 1px solid var(--sep);
-  border-radius: 0.45rem;
-  color: var(--gold-mid-bg);
-  background: var(--ucsd-navy);
-  padding: 0.6em 0.9em;
-}
-button:hover { background: var(--ucsd-navy); }
-
-/* Two-column form layout with CSS Grid + subgrid (Step 3.3) */
-form {
-  display: grid;
-  grid-template-columns: auto 1fr; /* label | control */
-  gap: 1em;
-}
-
-/* Each label spans both columns; its contents align to the subgrid */
-label {
-  display: grid;
-  grid-template-columns: subgrid;
-  grid-column: 1 / -1;
-  gap: 0.5em;
-}
-
-/* Submit button spans full row */
-button[type="submit"],
-button:not([type]) { grid-column: 1 / -1; }
-
-/* --------- Projects Grid --------- */
-.projects {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
-  gap: 1em;
-}
-
-/* Align headings/images/paragraphs across cards using subgrid rows */
-.projects > article {
-  display: grid;
-  grid-template-rows: subgrid;
-  grid-row: span 3; /* each card spans 3 rows of the subgrid */
+/* Theme switcher (Lab 3 Step 4.3) */
+.theme-switcher {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2000;
+  background: color-mix(in lch, var(--surface) 85%, var(--text) 15%);
   border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
   border-radius: 0.5rem;
-  background: var(--accent-weak-bg);
-  padding: 0.9rem;
-  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font: inherit;
 }
-.projects > article:hover {
-  background: var(--gold-weak-bg);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--ucsd-navy) 10%, transparent);
-}
+.theme-switcher select { font: inherit; }
 
-.projects h2 { margin: 0 0 0.4rem 0; font-size: 1.1rem; }
-
-/* --------- Misc Utilities --------- */
-hr {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin-block: 1.5rem;
+/* Simple card */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: color-mix(in lch, var(--surface) 92%, var(--text) 8%);
 }
 
-/* Respect reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Form */
+form label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+input, textarea, select, button {
+  font: inherit;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+button {
+  background: var(--ucsd-blue);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.05); }
+
+.muted { color: var(--muted); font-size: 0.9rem; }
+.noscript {
+  padding: 0.75rem 1rem;
+  background: #ffefc2;
+  color: #4a3a00;
+  border-bottom: 1px solid #e6d28d;
 }
