@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Project 2 Report</title>
+    <style>
+      :root {
+        --color-neutral-95: hsl(220 10% 95%);
+        --color-neutral-90: hsl(220 10% 90%);
+        --color-neutral-80: hsl(220 10% 80%);
+        --color-neutral-70: hsl(220 10% 70%);
+        --color-neutral-60: hsl(220 10% 60%);
+        --color-neutral-50: hsl(220 10% 50%);
+        --color-neutral-40: hsl(220 10% 40%);
+        --color-neutral-30: hsl(220 10% 30%);
+        --color-neutral-20: hsl(220 10% 20%);
+        --color-neutral-10: hsl(220 10% 10%);
+      }
+
+      html {
+        font: 100%/1.5 system-ui;
+        counter-reset: figure;
+        background: var(--color-neutral-95);
+        max-width: min(75vw, 80em);
+        margin: 0 auto;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        line-height: 1.1;
+        font-weight: 600;
+        text-wrap: balance;
+      }
+
+      h1, h2 {
+        border-bottom: 1px solid var(--color-neutral-80);
+        padding-bottom: 0.2em;
+      }
+
+      h1 {
+        margin-block: 1em 0.5rem;
+        font-size: clamp(2.5em, 150% + 2vh + 2vw, 10vmin);
+        font-weight: 800;
+      }
+
+      h1 small {
+        display: block;
+        width: fit-content;
+        padding: 0.2em 0.5em;
+        margin-inline: auto;
+        color: white;
+        background: var(--color-neutral-40);
+        font-size: 40%;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      h2 { font-size: 180%; color: var(--color-neutral-30); }
+      h3 { font-size: 130%; }
+
+      .subtitle {
+        margin-top: .25rem;
+        font-size: .95rem;
+        color: var(--color-neutral-40);
+        font-style: italic;
+      }
+
+      ul, ol { padding-inline-start: 2em; }
+      li + li { margin-top: 0.35em; }
+
+      header { padding-block: 1em; text-align: center; }
+
+      main {
+        background: white;
+        color: var(--color-neutral-20);
+        border-radius: 1rem;
+        padding: 0.1rem 2rem 2rem;
+      }
+
+      figure {
+        margin: 1em 0;
+        padding: 0.5rem;
+        margin-inline: -0.5em;
+        border: 1px solid var(--color-neutral-80);
+        box-shadow: 0 0.1em 0.2em var(--color-neutral-95);
+        text-align: center;
+        background: white;
+      }
+
+      figure > figcaption {
+        font: 500 75% var(--font-sans);
+        background: var(--color-neutral-95);
+        padding: 0.5rem;
+        margin: -0.5rem;
+        margin-top: 0.5rem;
+        counter-increment: figure;
+        text-align: left;
+      }
+
+      figure > figcaption::before {
+        content: 'Figure ' counter(figure) ': ';
+        font-weight: bold;
+        color: var(--color-neutral-40);
+      }
+
+      .score {
+        display: inline-block;
+        min-width: 2.5ch;
+        text-align: center;
+        padding: 0.1rem 0.4rem;
+        margin-right: 0.4rem;
+        border-radius: 0.4rem;
+        background: var(--color-neutral-90);
+        font-weight: 700;
+      }
+
+      .score.earnest { background: #e6f4ea; }
+      .score.deceptive { background: #fdecea; }
+      .score.neutral { background: #eef2f7; }
+
+      .key-takeaway {
+        background: var(--color-neutral-90);
+        padding: .6rem .8rem;
+        border-left: 4px solid var(--color-neutral-40);
+        border-radius: .25rem;
+        margin: .5rem 0 1rem;
+      }
+
+      .meta {
+        font-size: 0.9rem;
+        color: var(--color-neutral-40);
+        margin-top: .25rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>
+        <small>Project 2</small>
+        Persuasive or Deceptive Visualization?
+      </h1>
+      <p><strong>JoJo&nbsp;Lin</strong> — <em>jol145@ucsd.edu</em></p>
+      <div class="meta">Dataset: <a href="https://dsc-courses.github.io/dsc209r-2025-fa/resources/data/GuttmacherInstituteAbortionDataByState.xlsx">Abortion Data by U.S. State from the Guttmacher Institute</a></div>
+    </header>
+
+    <main>
+      <h2>Proposition</h2>
+      <p><strong>“States that reduced the number of abortion clinics between 2017 and 2020 also experienced declines in abortion rates — suggesting that clinic availability directly affects abortion access.”</strong></p>
+      <p class="subtitle">Counterpoint takeaway: <em>Clinic access declines don’t uniformly reduce abortion rates; state-level changes vary widely.</em></p>
+
+      <section>
+        <h3>FOR the Proposition</h3>
+        <div class="key-takeaway"><strong/><em>When clinics close, abortion rates tend to fall.</em></strong></div>
+
+        <figure>
+          <img src="FOR.png" alt="Scatter plot of % change in abortion rate vs % change in number of clinics by state, 2017–2020, with a fitted trendline" width="1568" height="937" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
+          <figcaption>Percent change in abortion rates versus percent change in clinic counts across states (2017–2020), with a fitted trendline to emphasize a positive association.</figcaption>
+        </figure>
+
+        <p><strong>Design Decisions, Scores (–2 to +2), and Rationale:</strong></p>
+        <ul>
+          <li><span class="score deceptive">–1</span><strong>Similarity of hues for points and trendline.</strong> Using closely related colors visually fuses variables and strengthens perceived linkage without statistical proof.</li>
+          <li><span class="score deceptive">–1</span><strong>Axis limits centered on the dense cluster.</strong> Cropping to the interquartile span reduces visible outliers and makes the slope appear more uniform.</li>
+          <li><span class="score deceptive">–1</span><strong>Trendline shown without R² or confidence band.</strong> Viewers may overestimate the strength and certainty of the association.</li>
+          <li><span class="score neutral">0</span><strong>State labels hidden by default.</strong> Reduces clutter for readability; exact state context is available on demand if shown in the appendix/figure notes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>AGAINST the Proposition</h3>
+        <div class="key-takeaway"><em><strong>Clinic changes do not consistently predict state abortion-rate changes.</strong></em></div>
+
+        <figure>
+          <img src="AGAINST.png" alt="Box plots of state % change in abortion rates grouped by clinic count change categories: decrease (<0), no change (0), increase (>0), 2017–2020" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"/>
+          <figcaption>Distribution of abortion-rate percent change by clinic-change category (2017–2020). Overlapping medians and spreads indicate weak, inconsistent relationships.</figcaption>
+        </figure>
+
+        <p><strong>Design Decisions, Scores (–2 to +2), and Rationale:</strong></p>
+        <ul>
+          <li><span class="score earnest">+2</span><strong>Full, symmetric y-axis range (±100%).</strong> Prevents exaggeration and puts differences in appropriate context.</li>
+          <li><span class="score earnest">+1</span><strong>Distributional view (box plots) instead of single averages.</strong> Highlights overlap and variability, avoiding overstatement of effects.</li>
+          <li><span class="score neutral">0</span><strong>Equal-sized bins for clinic change (&lt;0, =0, &gt;0).</strong> Simplifies a continuous predictor to aid comparison while acknowledging information loss.</li>
+          <li><span class="score earnest">+1</span><strong>Neutral palette and clear annotation of medians.</strong> Steers attention toward central tendency and spread rather than dramatic color cues.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Final Reflection</h2>
+        <p>I find the opposing-side visualization more convincing. The “FOR” scatterplot is persuasive, but its color pairing, cropped axes, and unqualified trendline can imply a stronger relationship than warranted. The “AGAINST” box-plot view provides broader context—overlapping distributions and similar medians across clinic-change categories—illustrating that clinic availability alone does not consistently determine abortion-rate changes. This exercise reinforces how design choices (axes, encodings, and annotations) can shape perception without changing the underlying data; therefore, transparent labeling and conservative scaling are critical to honest analysis.</p>
+      </section>
+    </main>
+  </body>
+</html>
