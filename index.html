@@ -5,7 +5,6 @@
   <title>JoJo Lin — Portfolio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./style.css" />
-  <!-- Lab 4 requires ES modules on the page that uses them -->
   <script src="./global.js" type="module"></script>
   <script src="./index.js" type="module" defer></script>
 </head>
@@ -25,13 +24,11 @@
 
     <section aria-labelledby="latest-heading">
       <h2 id="latest-heading">Latest Projects</h2>
-      <!-- Lab Step 2: JS will inject the latest 3 items here -->
       <div class="projects"></div>
     </section>
 
     <section aria-labelledby="stats-heading" class="profile-stats-section">
       <h2 id="stats-heading">GitHub Profile Stats</h2>
-      <!-- Lab Step 3/5: JS will fill this -->
       <div id="profile-stats" class="profile-stats"></div>
     </section>
   </main>
@@ -41,7 +38,6 @@
   </footer>
 
   <script>
-    // tiny helper to keep footer year current (not part of lab requirements)
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
