@@ -1,7 +1,5 @@
-// index.js
 import { fetchJSON, renderProjects, fetchGitHubData } from './global.js';
 
-// Step 2: latest 3 projects
 const all = await fetchJSON('./lib/projects.json');
 const latest = Array.isArray(all) ? all.slice(0, 3) : [];
 const homeProjects = document.querySelector('.projects');
@@ -9,7 +7,7 @@ if (homeProjects) {
   renderProjects(latest, homeProjects, 'h3');
 }
 
-// Step 3–5: GitHub stats
+// GitHub stats
 const profileStats = document.querySelector('#profile-stats');
 if (profileStats) {
   const username = 'jol145099';
