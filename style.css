@@ -182,6 +182,7 @@ button:not([type]) { grid-column: 1 / -1; }
   background: var(--accent-weak-bg);
   padding: 0.9rem;
   transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+  color:var(--text);
 }
 .projects > article:hover {
   background: var(--gold-weak-bg);
@@ -354,7 +355,7 @@ html[data-theme="dark"] .theme-switcher select {
   font-size: .75rem;
   padding: .1rem .5rem;
   border-radius: 999px;
-  background: #C69214;
+  background: #00C6D7;
   color: #182B49;
   vertical-align: middle;
   margin-left: .35rem;
