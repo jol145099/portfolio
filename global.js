@@ -143,7 +143,6 @@ function applyTheme(mode) {
   }
 }
 
-// ============ Optional: contact form mailto handler ============
 function wireContactForm() {
   const form = document.querySelector("#contactForm");
   if (!form) return;
@@ -166,4 +165,53 @@ function wireContactForm() {
     const url = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     location.href = url;
   });
+}
+
+
+export async function fetchJSON(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching or parsing JSON data:', error);
+    // Return a safe fallback that callers can handle
+    return [];
+  }
+}
+
+
+export function renderProjects(projects, containerElement, headingLevel = 'h2') {
+  if (!containerElement) return;
+
+  const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : 'h2';
+
+  containerElement.innerHTML = '';
+
+  if (!Array.isArray(projects) || projects.length === 0) {
+    containerElement.innerHTML = `<p class="empty-state">No projects to show.</p>`;
+    return;
+  }
+
+  for (const project of projects) {
+    const article = document.createElement('article');
+    const title = project?.title ?? 'Untitled Project';
+    const img = project?.image ?? 'https://dsc106.com/labs/lab02/images/empty.svg';
+    const desc = project?.description ?? '';
+
+    article.innerHTML = `
+      <${validHeading}>${title}</${validHeading}>
+      <img src="${img}" alt="${title}">
+      <p>${desc}</p>
+    `;
+    containerElement.appendChild(article);
+  }
+}
+
+// GitHub API wrapper (Step 3.2)
+export async function fetchGitHubData(username) {
+  // Uses the same fetchJSON under the hood
+  return fetchJSON(`https://api.github.com/users/${username}`);
 }

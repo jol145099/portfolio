@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>JoJo Lin: Personal site and portfolio</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="global.js" type="module"></script>
+  <script src="index.js" type="module" defer></script>
 </head>
 <body>
   <noscript>
@@ -16,6 +18,15 @@
     <p>This is my portfolio for DSC 209R!!</p>
     <img src="images/me.jpg" alt="Me and my dogs!" width="700" height="700" />
   </main>
+
+  <section>
+  <h2>Latest Projects</h2>
+  <div class="projects"><!-- JS will render three items here --></div>
+  </section>
+
+  <section>
+  <div id="profile-stats" class="profile-stats"><!-- JS fills this --></div>
+  </section>
 
   <script type="module" src="global.js"></script>
 </body>

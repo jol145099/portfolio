@@ -1,0 +1,74 @@
+[
+  {
+    "title": "Clinic Access Trends",
+    "year": "2025",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Exploratory visuals on clinic access vs outcomes."
+  },
+  {
+    "title": "Abortion Policy Visuals",
+    "year": "2025",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Persuasive and counter-persuasive designs."
+  },
+  {
+    "title": "Project 3 Wireframe",
+    "year": "2025",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Interactive mockups for P3."
+  },
+  {
+    "title": "EDA – Amazon Reviews",
+    "year": "2024",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Spark RDD and visualization prep."
+  },
+  {
+    "title": "OnCore KPI Dashboard",
+    "year": "2024",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "BI dashboard for clinical ops."
+  },
+  {
+    "title": "CTMS SOP Visual Summary",
+    "year": "2024",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Process flows and SOP cues."
+  },
+  {
+    "title": "Metagenomics Demo",
+    "year": "2023",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Leafy greens pathogen ID exercise."
+  },
+  {
+    "title": "Pichia pastoris Slides",
+    "year": "2023",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Industrial biotech overview slides."
+  },
+  {
+    "title": "Portfolio Site v1",
+    "year": "2023",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "First personal site draft."
+  },
+  {
+    "title": "UCLA Football Viz",
+    "year": "2022",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Scatterplot and annotations."
+  },
+  {
+    "title": "Tableau Admissions",
+    "year": "2022",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Enrollment trends dashboard."
+  },
+  {
+    "title": "Xanthan Gum Fermentation",
+    "year": "2021",
+    "image": "https://dsc106.com/labs/lab02/images/empty.svg",
+    "description": "Case study and quick viz."
+  }
+]
