@@ -51,10 +51,16 @@ h1 {
   color:#182B49;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h2 {
   line-height: 1.1;
   text-wrap: balance;
   color:#006A96;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.1;
+  text-wrap: balance;
 }
 
 /* --------- Links & Focus Visibility --------- */
@@ -343,8 +349,8 @@ html[data-theme="dark"] .theme-switcher select {
   font-size: .75rem;
   padding: .1rem .5rem;
   border-radius: 999px;
-  background: #FFCD00;
-  color: #e8f2ff;
+  background: #182B49;
+  color: #C69214;
   vertical-align: middle;
   margin-left: .35rem;
 }
