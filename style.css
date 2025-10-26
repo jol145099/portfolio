@@ -362,6 +362,6 @@ html[data-theme="dark"] .theme-switcher select {
 html[data-theme="dark"] .site-header { background: oklch(14% 0 250); }
 html[data-theme="dark"] .site-footer { color: var(--text); border-top-color: var(--sep); }
 html[data-theme="dark"] .pill {
-  background: color-mix(in oklab, var(--ucsd-gold) 25%, black);
+  background: var(--ucsd-gold));
   color: var(--ucsd-navy);
 }

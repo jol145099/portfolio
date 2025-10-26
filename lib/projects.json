@@ -1,7 +1,7 @@
 [
   { "title": "DSC 209R - Project 2", "year": "2025", "image": "https://jol145099.github.io/portfolio/projects/FOR.png", "description": "Persuasive or Deceptive Visualization?" },
   { "title": "Project 3 Wireframe", "year": "2025", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "Interactive mockups for P3." },
-  { "title": "EDA — Amazon Reviews", "year": "2024", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "Spark RDD and visualization prep." },
+  { "title": "EDA - Amazon Reviews", "year": "2024", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "Spark RDD and visualization prep." },
   { "title": "OnCore KPI Dashboard", "year": "2024", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "BI dashboard for clinical ops." },
   { "title": "CTMS SOP Visual Summary", "year": "2024", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "Process flows and SOP cues." },
   { "title": "Metagenomics Demo", "year": "2023", "image": "https://dsc106.com/labs/lab02/images/empty.svg", "description": "Leafy greens pathogen ID exercise." },
