@@ -1,15 +1,19 @@
-// ============ Site bootstrap ============
+// ===============================
+// global.js — merged & cleaned
+// ===============================
+
 console.log("IT'S ALIVE!");
 
+// ---------- Boot ----------
 document.addEventListener("DOMContentLoaded", () => {
-  injectNav();           // build nav on every page
-  markCurrentLink();     // highlight current page
-  ensureThemeSwitcher(); // add Theme: [Automatic|Light|Dark] in top-right
-  applySavedOrSystemTheme(); // apply saved choice (or system if "auto")
-  wireContactForm();     // optional: mailto handler on contact page
+  injectNav();                 // build nav if none exists
+  markCurrentLink();           // highlight active link
+  ensureThemeSwitcher();       // Theme: [Automatic|Light|Dark]
+  applySavedOrSystemTheme();   // apply saved choice or system
+  wireContactForm();           // contact form mailto handler
 });
 
-// ============ Navigation (keeps Lab 2 look via your CSS) ============
+// ---------- Navigation ----------
 const NAV_ITEMS = [
   { href: "/",          text: "Home" },
   { href: "/projects/", text: "Projects" },
@@ -18,30 +22,28 @@ const NAV_ITEMS = [
   { href: "https://github.com/jol145099", text: "GitHub", external: true },
 ];
 
-// GitHub Pages repo base (user.github.io/<repo>/...)
+// Detect GitHub Pages repo base (user.github.io/<repo>/...)
 function basePath() {
   const isGhPages = location.hostname.endsWith(".github.io");
-  const parts = location.pathname.split("/").filter(Boolean);
+  const parts = location.pathname.split("/").filter(Boolean); // ["repo", ...]
   if (isGhPages && parts.length > 0) return `/${parts[0]}`;
   return "";
 }
+
 function absolutize(href) {
   if (href.startsWith("http")) return href;
   return basePath() + href;
 }
 
 function injectNav() {
-  // If a hardcoded <nav> exists, leave it. If not, insert one.
+  // If a <nav> already exists *with* links, do not replace it.
   let nav = document.querySelector("nav");
   if (!nav) {
     nav = document.createElement("nav");
     document.body.prepend(nav);
   }
-
-  // If the nav already has links, don't duplicate.
   if (nav.querySelector("a")) return;
 
-  // Allow both direct <a> and <ul>/<li> per your CSS
   const frag = document.createDocumentFragment();
   for (const item of NAV_ITEMS) {
     const a = document.createElement("a");
@@ -54,8 +56,6 @@ function injectNav() {
     frag.appendChild(a);
   }
   nav.appendChild(frag);
-
-  // Make it discoverable for your nav styles if you target [data-auto]
   nav.setAttribute("data-auto", "true");
 }
 
@@ -67,6 +67,7 @@ function normalizePath(pathname) {
   if (!p.endsWith("/")) p += "/";
   return p;
 }
+
 function markCurrentLink() {
   const here = normalizePath(location.pathname);
   document.querySelectorAll("nav a").forEach(a => {
@@ -78,20 +79,19 @@ function markCurrentLink() {
   });
 }
 
-// ============ Theme switcher (Lab 3 behavior) ============
-const THEME_KEY = "theme";          // 'auto' | 'light' | 'dark'
+// ---------- Theme switcher ----------
+const THEME_KEY = "theme"; // 'auto' | 'light' | 'dark'
 const MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
 let mediaListener = null;
 
 function ensureThemeSwitcher() {
-  // If already present (e.g., you hand-wrote it), don't duplicate.
-  if (document.querySelector(".theme-switcher")) return;
+  if (document.querySelector(".theme-switcher")) return; // already present
 
   const wrap = document.createElement("div");
   wrap.className = "theme-switcher";
   wrap.innerHTML = `
     <label for="theme-select">Theme:</label>
-    <select id="theme-select">
+    <select id="theme-select" aria-label="Theme">
       <option value="auto">Automatic</option>
       <option value="light">Light</option>
       <option value="dark">Dark</option>
@@ -116,12 +116,11 @@ function applySavedOrSystemTheme() {
 }
 
 function applyTheme(mode) {
-  // remove old listener if switching away from auto
+  // remove any prior listener
   if (mediaListener) {
     MEDIA.removeEventListener("change", mediaListener);
     mediaListener = null;
   }
-
   const root = document.documentElement;
   root.removeAttribute("data-theme"); // reset
 
@@ -130,10 +129,9 @@ function applyTheme(mode) {
   } else if (mode === "dark") {
     root.dataset.theme = "dark";
   } else {
-    // auto = follow system *and* live-update on change
+    // auto: follow system + live update
     root.dataset.theme = MEDIA.matches ? "dark" : "light";
     mediaListener = e => {
-      // only react when still in "auto"
       const current = localStorage.getItem(THEME_KEY) || "auto";
       if (current === "auto") {
         root.dataset.theme = e.matches ? "dark" : "light";
@@ -143,6 +141,7 @@ function applyTheme(mode) {
   }
 }
 
+// ---------- Contact form ----------
 function wireContactForm() {
   const form = document.querySelector("#contactForm");
   if (!form) return;
@@ -151,8 +150,8 @@ function wireContactForm() {
     e.preventDefault();
     const fd = new FormData(form);
 
-    // TODO: update with your real email
-    const to = "YOUR_EMAIL@EXAMPLE.COM";
+    // put your real email here
+    const to = "jol145@ucsd.edu";
 
     const subject = `[Website] ${fd.get("subject") ?? ""}`.trim();
     const body = [
@@ -167,28 +166,24 @@ function wireContactForm() {
   });
 }
 
-
+// ---------- Lab 4 shared utilities (exports) ----------
 export async function fetchJSON(url) {
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching or parsing JSON data:', error);
-    // Return a safe fallback that callers can handle
+    // Avoid stale caches on GitHub Pages while iterating
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching or parsing JSON data:", err);
     return [];
   }
 }
 
-
-export function renderProjects(projects, containerElement, headingLevel = 'h2') {
+export function renderProjects(projects, containerElement, headingLevel = "h2") {
   if (!containerElement) return;
 
-  const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : 'h2';
-
-  containerElement.innerHTML = '';
+  const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : "h2";
+  containerElement.innerHTML = "";
 
   if (!Array.isArray(projects) || projects.length === 0) {
     containerElement.innerHTML = `<p class="empty-state">No projects to show.</p>`;
@@ -196,13 +191,14 @@ export function renderProjects(projects, containerElement, headingLevel = 'h2') 
   }
 
   for (const project of projects) {
-    const article = document.createElement('article');
-    const title = project?.title ?? 'Untitled Project';
-    const img = project?.image ?? 'https://dsc106.com/labs/lab02/images/empty.svg';
-    const desc = project?.description ?? '';
+    const article = document.createElement("article");
+    const title = project?.title ?? "Untitled Project";
+    const img = project?.image ?? "https://dsc106.com/labs/lab02/images/empty.svg";
+    const desc = project?.description ?? "";
+    const year = project?.year ? `<span class="pill">${project.year}</span>` : "";
 
     article.innerHTML = `
-      <${validHeading}>${title}</${validHeading}>
+      <${validHeading}>${title} ${year}</${validHeading}>
       <img src="${img}" alt="${title}">
       <p>${desc}</p>
     `;
@@ -210,8 +206,6 @@ export function renderProjects(projects, containerElement, headingLevel = 'h2') 
   }
 }
 
-// GitHub API wrapper (Step 3.2)
 export async function fetchGitHubData(username) {
-  // Uses the same fetchJSON under the hood
   return fetchJSON(`https://api.github.com/users/${username}`);
 }
