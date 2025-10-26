@@ -193,7 +193,7 @@ button:not([type]) { grid-column: 1 / -1; }
 .projects h2 { margin: 0 0 0.4rem 0; font-size: 1.1rem; }
 
 .projects > article a.project-link {
-  display: block;
+  display: grid;
   color: inherit;
   text-decoration: none;
 }
@@ -201,7 +201,7 @@ button:not([type]) { grid-column: 1 / -1; }
 .projects > article a.project-link:hover {
   transform: scale(1.02);
   text-decoration: none;
-  color: var(--ucsd-gold); /* highlight title text */
+  color: var(--ucsd-gold);
 }
 
 
