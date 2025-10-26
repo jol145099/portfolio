@@ -170,20 +170,23 @@ button:not([type]) { grid-column: 1 / -1; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
   gap: 1em;
+  align-items: start;
 }
 
 /* Align headings/images/paragraphs across cards using subgrid rows */
 .projects > article {
-  display: grid;
-  grid-template-rows: subgrid;
-  grid-row: span 3; /* each card spans 3 rows of the subgrid */
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--accent-weak-bg);
-  padding: 0.9rem;
-  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
-  color:var(--text);
+  grid-template-rows: auto; 
+  grid-row: auto; 
+  height: auto; 
 }
+
+.projects > article img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
 .projects > article:hover {
   background: var(--gold-weak-bg);
   transform: translateY(-1px);
@@ -201,7 +204,7 @@ button:not([type]) { grid-column: 1 / -1; }
 .projects > article a.project-link:hover {
   transform: scale(1.02);
   text-decoration: none;
-  color: var(--ucsd-gold);
+  color: var(--ucsd-gold); 
 }
 
 
