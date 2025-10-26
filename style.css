@@ -301,3 +301,61 @@ html[data-theme="dark"] .theme-switcher select {
   color: var(--ucsd-gold);
   border-color: var(--sep);
 }
+
+/* ============================================================
+   LAB 4 ADDITIONS (non-breaking helpers used by new pages)
+   ============================================================ */
+
+/* Container used by new HTML pages (keeps your 100ch body constraint intact) */
+.container {
+  max-width: 100ch;
+  margin-inline: auto;
+  padding: 1.25rem;
+}
+
+/* Optional header/footer wrappers for the new layout (nav already styled above) */
+.site-header { position: sticky; top: 0; background: white; z-index: 10; }
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+  text-align: center;
+  color: color-mix(in oklab, var(--ucsd-navy) 40%, #666);
+}
+
+/* Small brand weight utility if you use <a class="brand"> */
+.brand { font-weight: 700; }
+
+/* Pills for year badges on project cards */
+.pill {
+  display: inline-block;
+  font-size: .75rem;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  background: #e8f2ff;
+  color: #1456a3;
+  vertical-align: middle;
+  margin-left: .35rem;
+}
+
+/* Empty-state text for when JSON is missing or fetch fails */
+.empty-state { opacity: .8; font-style: italic; }
+
+/* GitHub profile stats block (Home page) */
+.profile-stats-section { margin-block: 2rem; }
+.profile-stats h3 { margin: 0 0 .5rem 0; }
+.profile-stats dl {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .5rem 1rem;
+  margin: 0;
+}
+.profile-stats dt { grid-row: 1; font-weight: 600; }
+.profile-stats dd { grid-row: 2; margin: 0; }
+
+/* Dark theme tweaks for the new helpers */
+html[data-theme="dark"] .site-header { background: oklch(14% 0 250); }
+html[data-theme="dark"] .site-footer { color: var(--text); border-top-color: var(--sep); }
+html[data-theme="dark"] .pill {
+  background: color-mix(in oklab, var(--ucsd-gold) 25%, black);
+  color: var(--ucsd-navy);
+}

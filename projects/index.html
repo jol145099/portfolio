@@ -1,24 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <title>Projects — JoJo Lin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Projects – JoJo Lin</title>
   <link rel="stylesheet" href="../style.css" />
+  <!-- Import the shared functions and this page's script as ES modules -->
   <script src="../global.js" type="module"></script>
-  <script src="projects.js" type="module" defer></script>
+  <script src="./projects.js" type="module" defer></script>
 </head>
 <body>
-  <main class="container">
-    <h1 class="projects-title">Projects</h1>
-    <div class="projects"></div>
+  <header class="site-header">
+    <nav class="nav">
+      <a href="../index.html" class="brand">JoJo Lin</a>
+      <a aria-current="page" href="./">Projects</a>
+      <a href="https://github.com/jol145099" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
 
-    <section>
-      <h2>Sample Project</h2>
-      <p>Short description of a project. Replace with your real content.</p>
-    </section>
+  <main class="container">
+    <!-- Lab Step 1.6: give this H1 the .projects-title class so JS can set the count -->
+    <h1 class="projects-title">Projects</h1>
+
+    <!-- Lab Step 1.5: this container must exist; remove any hard-coded <article> -->
+    <div class="projects"></div>
   </main>
 
-  <script type="module" src="../global.js"></script>
+  <footer class="site-footer">
+    <small>&copy; <span id="year"></span> JoJo Lin</small>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

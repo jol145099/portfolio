@@ -1,22 +1,20 @@
 // index.js
 import { fetchJSON, renderProjects, fetchGitHubData } from './global.js';
 
-// Step 2: Latest 3 projects on home
+// Step 2: latest 3 projects
 const all = await fetchJSON('./lib/projects.json');
 const latest = Array.isArray(all) ? all.slice(0, 3) : [];
-
-const homeProjectsContainer = document.querySelector('.projects');
-if (homeProjectsContainer) {
-  renderProjects(latest, homeProjectsContainer, 'h3');
+const homeProjects = document.querySelector('.projects');
+if (homeProjects) {
+  renderProjects(latest, homeProjects, 'h3');
 }
 
-// Step 3: GitHub profile stats box
+// Step 3–5: GitHub stats
 const profileStats = document.querySelector('#profile-stats');
 if (profileStats) {
-  const username = 'jol145099'; // your GitHub handle
+  const username = 'jol145099';
   const githubData = await fetchGitHubData(username);
 
-  // Basic guard if GitHub returns a rate limit or error
   if (githubData && !githubData.message) {
     profileStats.innerHTML = `
       <h3>@${username}</h3>

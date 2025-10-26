@@ -1,33 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <title>JoJo Lin — Portfolio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JoJo Lin: Personal site and portfolio</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="global.js" type="module"></script>
-  <script src="index.js" type="module" defer></script>
+  <link rel="stylesheet" href="./style.css" />
+  <!-- Lab 4 requires ES modules on the page that uses them -->
+  <script src="./global.js" type="module"></script>
+  <script src="./index.js" type="module" defer></script>
 </head>
 <body>
-  <noscript>
-    <div class="noscript">This site uses JavaScript for the navigation and theme switcher. Please enable JavaScript.</div>
-  </noscript>
+  <header class="site-header">
+    <nav class="nav">
+      <a href="./index.html" class="brand">JoJo Lin</a>
+      <a href="./projects/">Projects</a>
+      <a href="https://github.com/jol145099" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
 
   <main class="container">
-    <h1>JoJo Lin</h1>
-    <p>This is my portfolio for DSC 209R!!</p>
+    <h1>Welcome!</h1>
+    <p>This is my portfolio for DSC 209R.</p>
     <img src="images/me.jpg" alt="Me and my dogs!" width="700" height="700" />
+
+    <section aria-labelledby="latest-heading">
+      <h2 id="latest-heading">Latest Projects</h2>
+      <!-- Lab Step 2: JS will inject the latest 3 items here -->
+      <div class="projects"></div>
+    </section>
+
+    <section aria-labelledby="stats-heading" class="profile-stats-section">
+      <h2 id="stats-heading">GitHub Profile Stats</h2>
+      <!-- Lab Step 3/5: JS will fill this -->
+      <div id="profile-stats" class="profile-stats"></div>
+    </section>
   </main>
 
-  <section>
-  <h2>Latest Projects</h2>
-  <div class="projects"><!-- JS will render three items here --></div>
-  </section>
+  <footer class="site-footer">
+    <small>&copy; <span id="year"></span> JoJo Lin</small>
+  </footer>
 
-  <section>
-  <div id="profile-stats" class="profile-stats"><!-- JS fills this --></div>
-  </section>
-
-  <script type="module" src="global.js"></script>
+  <script>
+    // tiny helper to keep footer year current (not part of lab requirements)
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
+

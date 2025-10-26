@@ -2,11 +2,11 @@
 console.log("IT'S ALIVE!");
 
 document.addEventListener("DOMContentLoaded", () => {
-  injectNav();           // build nav on every page
-  markCurrentLink();     // highlight current page
-  ensureThemeSwitcher(); // add Theme: [Automatic|Light|Dark] in top-right
+  injectNav();               // build nav on every page
+  markCurrentLink();         // highlight current page
+  ensureThemeSwitcher();     // add Theme: [Automatic|Light|Dark] in top-right
   applySavedOrSystemTheme(); // apply saved choice (or system if "auto")
-  wireContactForm();     // optional: mailto handler on contact page
+  wireContactForm();         // optional: mailto handler on contact page
 });
 
 // ============ Navigation (keeps Lab 2 look via your CSS) ============
@@ -78,7 +78,7 @@ function markCurrentLink() {
   });
 }
 
-// ============ Theme switcher (Lab 3 behavior) ============
+// ============ Theme switcher ============
 const THEME_KEY = "theme";          // 'auto' | 'light' | 'dark'
 const MEDIA = window.matchMedia("(prefers-color-scheme: dark)");
 let mediaListener = null;
@@ -143,6 +143,7 @@ function applyTheme(mode) {
   }
 }
 
+// ============ Contact form (optional helper) ============
 function wireContactForm() {
   const form = document.querySelector("#contactForm");
   if (!form) return;
@@ -167,28 +168,30 @@ function wireContactForm() {
   });
 }
 
+// ============ Lab 4 utilities (shared) ============
 
+// Step 1.2–1.3: fetch JSON with error handling
 export async function fetchJSON(url) {
   try {
-    const response = await fetch(url);
+    // no-store helps avoid stale GitHub Pages caches during development
+    const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
     }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching or parsing JSON data:', error);
+    console.error("Error fetching or parsing JSON data:", error);
     // Return a safe fallback that callers can handle
     return [];
   }
 }
 
-
-export function renderProjects(projects, containerElement, headingLevel = 'h2') {
+// Step 1.4 (+1.6): render projects; supports dynamic heading level
+export function renderProjects(projects, containerElement, headingLevel = "h2") {
   if (!containerElement) return;
 
-  const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : 'h2';
-
-  containerElement.innerHTML = '';
+  const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : "h2";
+  containerElement.innerHTML = "";
 
   if (!Array.isArray(projects) || projects.length === 0) {
     containerElement.innerHTML = `<p class="empty-state">No projects to show.</p>`;
@@ -196,10 +199,10 @@ export function renderProjects(projects, containerElement, headingLevel = 'h2') 
   }
 
   for (const project of projects) {
-    const article = document.createElement('article');
-    const title = project?.title ?? 'Untitled Project';
-    const img = project?.image ?? 'https://dsc106.com/labs/lab02/images/empty.svg';
-    const desc = project?.description ?? '';
+    const article = document.createElement("article");
+    const title = project?.title ?? "Untitled Project";
+    const img = project?.image ?? "https://dsc106.com/labs/lab02/images/empty.svg";
+    const desc = project?.description ?? "";
 
     article.innerHTML = `
       <${validHeading}>${title}</${validHeading}>
@@ -210,7 +213,7 @@ export function renderProjects(projects, containerElement, headingLevel = 'h2') 
   }
 }
 
-// GitHub API wrapper (Step 3.2)
+// Step 3.2: GitHub API wrapper
 export async function fetchGitHubData(username) {
   // Uses the same fetchJSON under the hood
   return fetchJSON(`https://api.github.com/users/${username}`);
