@@ -192,6 +192,19 @@ button:not([type]) { grid-column: 1 / -1; }
 
 .projects h2 { margin: 0 0 0.4rem 0; font-size: 1.1rem; }
 
+.projects > article a.project-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projects > article a.project-link:hover {
+  transform: scale(1.02);
+  text-decoration: none;
+  color: var(--ucsd-gold); /* highlight title text */
+}
+
+
 /* --------- Misc Utilities --------- */
 hr {
   border: 0;
@@ -356,7 +369,7 @@ html[data-theme="dark"] .theme-switcher select {
   padding: .1rem .5rem;
   border-radius: 999px;
   background: #00C6D7;
-  color: #182B49;
+  color: white;
   vertical-align: middle;
   margin-left: .35rem;
 }
