@@ -256,19 +256,12 @@ html[data-theme="dark"] button {
   border-color: var(--ucsd-gold);
 }
 html[data-theme="dark"] .projects > article {
-  background: color-mix(in oklab, var(--ucsd-navy) 55%, #1a1a1a);
+  background: color-mix(in oklab, var(--ucsd-navy) 78%, black);
   border-color: var(--sep);
 }
-
 html[data-theme="dark"] .projects > article:hover {
-  background: color-mix(in oklab, var(--ucsd-gold) 20%, var(--ucsd-navy));
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
-}
-
-html[data-theme="dark"] h1,
-html[data-theme="dark"] h2,
-html[data-theme="dark"] h3 {
-  color: var(--ucsd-gold);
+  background: color-mix(in oklab, var(--ucsd-gold) 30%, var(--ucsd-navy));
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
 }
 
 /* ============================================================
