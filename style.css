@@ -133,6 +133,7 @@ button {
   color: var(--gold-mid-bg);
   background: var(--ucsd-navy);
   padding: 0.6em 0.9em;
+  font-weight: 700;
 }
 button:hover { background: var(--ucsd-navy); }
 
@@ -228,7 +229,7 @@ html[data-theme="dark"] nav a {
 }
 html[data-theme="dark"] nav a:hover {
   border-bottom-color: var(--ucsd-gold);
-  background: var(--gold-weak-bg);
+  background: color-mix(in oklab, var(--ucsd-gold) 20%, var(--ucsd-navy);
 }
 html[data-theme="dark"] nav a[aria-current="page"],
 html[data-theme="dark"] nav a.current {
@@ -256,12 +257,19 @@ html[data-theme="dark"] button {
   border-color: var(--ucsd-gold);
 }
 html[data-theme="dark"] .projects > article {
-  background: color-mix(in oklab, var(--ucsd-navy) 78%, black);
+  background: color-mix(in oklab, var(--ucsd-navy) 55%, #1a1a1a);
   border-color: var(--sep);
 }
+
 html[data-theme="dark"] .projects > article:hover {
-  background: color-mix(in oklab, var(--ucsd-gold) 30%, var(--ucsd-navy));
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
+  background: color-mix(in oklab, var(--ucsd-gold) 20%, var(--ucsd-navy));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3 {
+  color: var(--ucsd-gold);
 }
 
 /* ============================================================
@@ -355,6 +363,6 @@ html[data-theme="dark"] .theme-switcher select {
 html[data-theme="dark"] .site-header { background: oklch(14% 0 250); }
 html[data-theme="dark"] .site-footer { color: var(--text); border-top-color: var(--sep); }
 html[data-theme="dark"] .pill {
-  background: color-mix(in oklab, var(--ucsd-gold) 25%, black);
+  background: var(--ucsd-gold));
   color: var(--ucsd-navy);
 }
