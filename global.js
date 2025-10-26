@@ -179,7 +179,7 @@ export async function fetchJSON(url) {
   }
 }
 
-export function renderProjects(projects, containerElement, headingLevel = "h3") {
+export function renderProjects(projects, containerElement, headingLevel = "h2") {
   if (!containerElement) return;
 
   const validHeading = /^(h[1-6])$/i.test(headingLevel) ? headingLevel.toLowerCase() : "h2";
