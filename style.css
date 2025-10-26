@@ -48,13 +48,13 @@ h1 {
   line-height: 1.1;
   text-wrap: balance;
   margin-block: 0.5em 0.3em;
-  color:#FFCD00;
+  color:#182B49;
 }
 
 h2 {
   line-height: 1.1;
   text-wrap: balance;
-  color:#182B49;
+  color:#006A96;
 }
 
 
@@ -275,6 +275,11 @@ html[data-theme="dark"] .projects > article:hover {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
 }
 
+html[data-theme="dark"] .projects > article h2,
+html[data-theme="dark"] .projects > article h3 {
+  color: var(--text);
+}
+
 html[data-theme="dark"] h1 {
   color: var(--ucsd-gold);
 }
@@ -349,8 +354,8 @@ html[data-theme="dark"] .theme-switcher select {
   font-size: .75rem;
   padding: .1rem .5rem;
   border-radius: 999px;
-  background: #182B49;
-  color: #C69214;
+  background: #C69214;
+  color: #182B49;
   vertical-align: middle;
   margin-left: .35rem;
 }
