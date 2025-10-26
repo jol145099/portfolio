@@ -3,6 +3,7 @@
   /* UCSD brand colors */
   --ucsd-navy: #182B49;
   --ucsd-gold: #C69214;
+  --ucsd-blue: #00C6D7;
 
   /* Core tokens */
   --color-accent: var(--ucsd-navy);
@@ -47,6 +48,7 @@ h1 {
   line-height: 1.1;
   text-wrap: balance;
   margin-block: 0.5em 0.3em;
+  color:#C69214;
 }
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.1;
@@ -228,7 +230,7 @@ html[data-theme="dark"] nav a {
 }
 html[data-theme="dark"] nav a:hover {
   border-bottom-color: var(--ucsd-gold);
-  background: var(--gold-weak-bg);
+  background: var(--border);
 }
 html[data-theme="dark"] nav a[aria-current="page"],
 html[data-theme="dark"] nav a.current {
@@ -265,10 +267,12 @@ html[data-theme="dark"] .projects > article:hover {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
 }
 
-html[data-theme="dark"] h1,
-html[data-theme="dark"] h2,
-html[data-theme="dark"] h3 {
+html[data-theme="dark"] h1 {
   color: var(--ucsd-gold);
+}
+
+html[data-theme="dark"] h2 {
+  color: var(--ucsd-blue);
 }
 
 /* ============================================================
@@ -362,6 +366,6 @@ html[data-theme="dark"] .theme-switcher select {
 html[data-theme="dark"] .site-header { background: oklch(14% 0 250); }
 html[data-theme="dark"] .site-footer { color: var(--text); border-top-color: var(--sep); }
 html[data-theme="dark"] .pill {
-  background: var(--ucsd-gold);
+  background: var(--ucsd-blue);
   color: var(--ucsd-navy);
 }
