@@ -170,23 +170,21 @@ button:not([type]) { grid-column: 1 / -1; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
   gap: 1em;
-  align-items: start;
 }
 
 /* Align headings/images/paragraphs across cards using subgrid rows */
 .projects > article {
-  grid-template-rows: auto; 
-  grid-row: auto; 
-  height: auto; 
-}
-
-.projects > article img {
-  width: 100%;
-  aspect-ratio: 16/9;
-  object-fit: cover;
+  display: grid;
+  grid-template-rows: auto;
+  grid-row: auto;
+  height: auto;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
+  background: var(--accent-weak-bg);
+  padding: 0.9rem;
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+  color:var(--text);
 }
-
 .projects > article:hover {
   background: var(--gold-weak-bg);
   transform: translateY(-1px);
