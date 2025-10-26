@@ -48,8 +48,11 @@ h1 {
   line-height: 1.1;
   text-wrap: balance;
   margin-block: 0.5em 0.3em;
-  color:#C69214;
+  color:#182B49;
 }
+
+h2{color:#006A96;}
+
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.1;
   text-wrap: balance;
@@ -341,7 +344,7 @@ html[data-theme="dark"] .theme-switcher select {
   font-size: .75rem;
   padding: .1rem .5rem;
   border-radius: 999px;
-  background: #1456a3;
+  background: #C69214;
   color: #e8f2ff;
   vertical-align: middle;
   margin-left: .35rem;
