@@ -453,19 +453,13 @@ html[data-theme="dark"] .pill {
 
 /* Hover and selection */
 .legend li.is-hovered,
-.legend li:is(:hover, :focus-visible) {
-  outline: 2px solid var(--color);
-  outline-offset: 2px;
-}
-
-.legend li.dimmed { opacity: .5; filter: saturate(.7); 
-}
-
-/* Keep legend pill color the same when selected (just a ring) */
 .legend li.is-selected {
   outline: 2px solid var(--color);
   outline-offset: 2px;
   box-shadow: none; 
+}
+
+.legend li.dimmed { opacity: .5; filter: saturate(.7); 
 }
 
 /* Remove rectangle focus; use subtle effects that don't change hue */
@@ -476,10 +470,7 @@ html[data-theme="dark"] .pill {
 #projects-pie-plot .slice {
   transition: transform .15s ease, filter .15s ease, opacity .15s ease;
 }
-#projects-pie-plot .slice.is-hovered {
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-  transform: scale(1.03);
-}
+#projects-pie-plot .slice.is-hovered,
 #projects-pie-plot .slice.is-selected {
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
   transform: scale(1.03);
