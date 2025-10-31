@@ -2,25 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Projects - JoJo Lin</title>
+  <title>Projects — JoJo Lin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../style.css" />
   <script src="../global.js" type="module"></script>
   <script src="./projects.js" type="module" defer></script>
 </head>
 <body>
+  <nav></nav>
+
   <main class="container">
     <h1 class="projects-title">Projects</h1>
 
+    <!-- Step 4: Search UI -->
+    <label class="visually-hidden" for="project-search">Search projects</label>
+    <input id="project-search" type="search" placeholder="Search projects…" autocomplete="off" />
+
+    <!-- Step 1: SVG pie; Step 2: Legend -->
+    <section class="pie-and-legend" aria-labelledby="chart-heading">
+      <h2 id="chart-heading" class="visually-hidden">Projects per year</h2>
+      <svg id="projects-pie-plot" viewBox="-50 -50 100 100" role="img" aria-label="Projects per year"></svg>
+      <ul class="legend" aria-label="Year legend"></ul>
+    </section>
+
+    <!-- Your card grid gets rendered here (same as Lab 4) -->
     <div class="projects"></div>
   </main>
 
   <footer class="site-footer">
     <small>&copy; <span id="year"></span> JoJo Lin</small>
   </footer>
-
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>

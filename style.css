@@ -397,3 +397,73 @@ html[data-theme="dark"] .pill {
   background: var(--ucsd-blue);
   color: var(--ucsd-navy);
 }
+
+/* ============================================================
+   LAB 5
+   ============================================================ */
+#projects-pie-plot {
+  max-width: 20em;
+  margin-block: 1.25rem;
+  overflow: visible; /* recommended in the lab */
+}
+
+.pie-and-legend {
+  display: grid;
+  grid-template-columns: min(22rem, 100%) 1fr;
+  gap: 1rem 2rem;
+  align-items: start;
+  margin-block: 1rem 2rem;
+}
+
+/* Legend styling (ul with swatch + label) */
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9em, 1fr)); /* lab tip */
+  gap: .5rem 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  padding: .4rem .6rem;
+  cursor: pointer;
+}
+.legend li em { font-style: normal; opacity: .7; margin-left: .25rem; }
+.legend .swatch {
+  width: 1rem;
+  aspect-ratio: 1 / 1;
+  border-radius: .25rem; /* or 50% if you want circles */
+  background: var(--color); /* <- color injected inline via style="--color: ..." */
+  border: 1px solid var(--border);
+}
+
+/* Hover/selected/highlight states (used in JS) */
+.legend li.is-hovered,
+.legend li:is(:hover, :focus-visible) {
+  outline: 2px solid var(--color);
+  outline-offset: 2px;
+}
+.legend li.is-selected {
+  box-shadow: 0 0 0 2px var(--color) inset;
+}
+
+/* Search input */
+#project-search {
+  margin-block: .5rem 1rem;
+  max-width: 28rem;
+}
+
+/* Accessibility helpers */
+.visually-hidden {
+  position: absolute !important;
+  clip: rect(1px,1px,1px,1px) !important;
+  clip-path: inset(50%) !important;
+  height: 1px !important; width: 1px !important;
+  overflow: hidden !important; white-space: nowrap !important;
+}
