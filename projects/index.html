@@ -5,7 +5,14 @@
   <title>Projects — JoJo Lin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../style.css" />
+
+  <!-- Shared helpers (Lab 4 utilities live here) -->
   <script src="../global.js" type="module"></script>
+
+  <!-- D3 as a classic script so the page never “dies” if ESM import fails -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+
+  <!-- This page’s logic -->
   <script src="./projects.js" type="module" defer></script>
 </head>
 <body>
@@ -14,18 +21,18 @@
   <main class="container">
     <h1 class="projects-title">Projects</h1>
 
-    <!-- Step 4: Search UI -->
+    <!-- Search (filters titles, descriptions, year, link) -->
     <label class="visually-hidden" for="project-search">Search projects</label>
     <input id="project-search" type="search" placeholder="Search projects…" autocomplete="off" />
 
-    <!-- Step 1: SVG pie; Step 2: Legend -->
+    <!-- Pie + Legend -->
     <section class="pie-and-legend" aria-labelledby="chart-heading">
       <h2 id="chart-heading" class="visually-hidden">Projects per year</h2>
       <svg id="projects-pie-plot" viewBox="-50 -50 100 100" role="img" aria-label="Projects per year"></svg>
       <ul class="legend" aria-label="Year legend"></ul>
     </section>
 
-    <!-- Your card grid gets rendered here (same as Lab 4) -->
+    <!-- Cards render here via JS -->
     <div class="projects"></div>
   </main>
 
