@@ -457,6 +457,10 @@ html[data-theme="dark"] .pill {
   outline: 2px solid var(--color);
   outline-offset: 2px;
 }
+
+.legend li.dimmed { opacity: .5; filter: saturate(.7); 
+}
+
 /* Keep legend pill color the same when selected (just a ring) */
 .legend li.is-selected {
   box-shadow: 0 0 0 2px var(--color) inset; /* subtle ring */
@@ -467,7 +471,7 @@ html[data-theme="dark"] .pill {
 #projects-pie-plot,
 #projects-pie-plot path,
 #projects-pie-plot path:focus { outline: none !important; }
-
+#projects-pie-plot .slice.dimmed { opacity: .35; }
 #projects-pie-plot .slice {
   transition: transform .15s ease, filter .15s ease, opacity .15s ease;
 }
