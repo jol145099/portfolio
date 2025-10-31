@@ -456,18 +456,18 @@ html[data-theme="dark"] .pill {
 .legend li:is(:hover, :focus-visible) {
   outline: 2px solid var(--color);
   outline-offset: 2px;
-}
-/* Keep legend pill color the same when selected (just a ring) */
-.legend li.is-selected {
-  box-shadow: 0 0 0 2px var(--color) inset; /* subtle ring */
-  /* background & text colors unchanged */
-}
 
-/* Remove rectangle focus; use subtle effects that don't change hue */
+/* Sticky selection visuals: keep selected color; dim others */
+.legend li.dimmed { opacity: .5; filter: saturate(.7); }
+#projects-pie-plot .slice.dimmed { opacity: .35; }
+
+/* Keep legend color same on select; show a ring only */
+.legend li.is-selected { box-shadow: 0 0 0 2px var(--color) inset; }
+
+/* Remove rectangular focus, use gentle effects */
 #projects-pie-plot,
 #projects-pie-plot path,
 #projects-pie-plot path:focus { outline: none !important; }
-
 #projects-pie-plot .slice {
   transition: transform .15s ease, filter .15s ease, opacity .15s ease;
 }
@@ -476,7 +476,7 @@ html[data-theme="dark"] .pill {
   transform: scale(1.03);
 }
 #projects-pie-plot .slice.is-selected {
-  /* keep the same fill color; just add a gentle ring */
+  /* same fill; subtle ring */
   filter: drop-shadow(0 0 0 2px rgba(0,0,0,.25));
 }
 
