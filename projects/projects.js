@@ -1,54 +1,41 @@
-// Projects page (Lab 5 exact behavior)
+// /projects/projects.js
 import { fetchJSON, renderProjects } from '../global.js';
 
-const d3ok = !!window.d3;
-const $ = (sel) => document.querySelector(sel);
-
+const $ = (s) => document.querySelector(s);
 const cardsEl  = $('.projects');
 const titleEl  = $('.projects-title');
 const searchEl = $('#project-search');
 const svgEl    = $('#projects-pie-plot');
 const legendEl = document.querySelector('.legend');
 
-let all = await fetchJSON('../lib/projects.json');
-if (!Array.isArray(all)) all = [];
-titleEl.textContent = `Projects (${all.length})`;
+let allProjects = await fetchJSON('../lib/projects.json');
+if (!Array.isArray(allProjects)) allProjects = [];
+titleEl.textContent = `Projects (${allProjects.length})`;
 
-// ---- Lab 5 state ----
-// ORIGINAL LAB BEHAVIOR (not combined filters):
-// - Search filters the list and also recomputes the pie from the *search results*.
-// - Clicking a slice/legend filters to that year.
-// - If you then change the search, the slice may disappear (the "final pitfall").
-const state = {
-  query: '',
-  selectedYear: null
-};
+// --- State: search ∩ year (both apply together) ---
+const state = { query: '', selectedYear: null };
 
-// Normalize for search
-const norm = (v) => (v ?? '').toString().toLowerCase();
+// --- Helpers ---
+const norm = v => (v ?? '').toString().toLowerCase();
 
-function searchOnly(items) {
-  if (!state.query) return items;
+function getSearchOnlyProjects() {
+  if (!state.query) return allProjects;
   const q = norm(state.query);
-  return items.filter(p =>
-    [p.title, p.description, p.year, p.link]
-      .map(norm)
-      .some(x => x.includes(q))
+  return allProjects.filter(p =>
+    [p.title, p.description, p.year, p.link].map(norm).some(t => t.includes(q))
   );
 }
 
-function visibleItems() {
-  // Build from search first (lab intent)
-  let items = searchOnly(all);
-  // If a year is selected, filter to that year
+function getVisibleProjects() {
+  // COMBINED FILTERS: search first, then year
+  let items = getSearchOnlyProjects();
   if (state.selectedYear) {
     items = items.filter(p => String(p.year) === String(state.selectedYear));
   }
   return items;
 }
 
-function rollupByYear(items) {
-  // year -> count
+function rollupCounts(items) {
   const m = new Map();
   for (const p of items) {
     const y = String(p.year ?? '').trim();
@@ -59,14 +46,16 @@ function rollupByYear(items) {
               .sort((a,b) => a.label.localeCompare(b.label));
 }
 
+// --- Cards ---
 function renderList() {
-  const items = visibleItems();
+  const items = getVisibleProjects();
   renderProjects(items, cardsEl, 'h2');
   titleEl.textContent = `Projects (${items.length})`;
 }
 
+// --- Pie + Legend (keeps slice colors identical when selected) ---
 function drawPie(data) {
-  if (!d3ok) return; // cards still render
+  if (!window.d3 || !data?.length) return;   // graceful if D3 missing
 
   const d3 = window.d3;
   const svg = d3.select(svgEl);
@@ -75,10 +64,8 @@ function drawPie(data) {
   svg.selectAll('*').remove();
   legend.selectAll('*').remove();
 
-  if (!data.length) return;
-
   const colors = d3.scaleOrdinal(d3.schemeTableau10);
-  const arc = d3.arc().innerRadius(24).outerRadius(48);     // donut
+  const arc = d3.arc().innerRadius(24).outerRadius(48); // donut
   const pie = d3.pie().value(d => d.value).sort(null);
 
   const g = svg.append('g');
@@ -89,8 +76,8 @@ function drawPie(data) {
     .append('path')
     .attr('class', 'slice')
     .attr('d', arc)
-    .attr('fill', (_, i) => colors(i))
-    .attr('stroke', '#fff')
+    .attr('fill', (_, i) => colors(i))        // <-- fill color never changes
+    .attr('stroke', '#fff')                   // thin separators
     .attr('stroke-linejoin', 'round')
     .attr('vector-effect', 'non-scaling-stroke')
     .attr('tabindex', 0)
@@ -101,10 +88,11 @@ function drawPie(data) {
     .data(data)
     .enter()
     .append('li')
-    .attr('style', (_, i) => `--color: ${colors(i)}`)
+    .attr('style', (_, i) => `--color: ${colors(i)}`)  // swatch color stays the same
     .attr('tabindex', 0)
     .html(d => `<span class="swatch"></span> ${d.label} <em>(${d.value})</em>`);
 
+  // Hover & select (no color change; just subtle ring/scale from CSS)
   function setHover(label) {
     arcs.classed('is-hovered', d => d.data.label === label)
         .attr('opacity', d => (label && d.data.label !== label ? 0.35 : 1));
@@ -118,38 +106,29 @@ function drawPie(data) {
     arcs.classed('is-selected', d => d.data.label === state.selectedYear);
     items.classed('is-selected', d => d.label === state.selectedYear);
 
-    // Re-render list
+    // Re-render cards and rebuild pie from SEARCH-only data (so legend/pie reflect current query)
     renderList();
-
-    // Now rebuild the pie from the *current* visible set per lab spec (this is
-    // what leads to the "final pitfall" when mixing search + year).
-    const pieData = rollupByYear(visibleItems());
-    drawPie(pieData);
+    drawPie(rollupCounts(getSearchOnlyProjects()));
   }
 
   arcs.on('mouseenter', (_, d) => setHover(d.data.label))
       .on('mouseleave', clearHover)
       .on('click',     (_, d) => toggleSelect(d.data.label))
-      .on('keydown',   (ev, d) => {
-        if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.data.label);
-      });
+      .on('keydown',   (ev, d) => { if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.data.label); });
 
   items.on('mouseenter', (_, d) => setHover(d.label))
        .on('mouseleave', clearHover)
        .on('click',     (_, d) => toggleSelect(d.label))
-       .on('keydown',   (ev, d) => {
-         if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.label);
-       });
+       .on('keydown',   (ev, d) => { if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.label); });
 }
 
-// Search -> update list + pie (pie computed from *search results*)
+// --- Search wiring (cards = search ∩ year; pie = search-only) ---
 searchEl?.addEventListener('input', () => {
   state.query = searchEl.value;
   renderList();
-  state.selectedYear = state.selectedYear; // no-op; keeps logic explicit
-  drawPie(rollupByYear(searchOnly(all)));
+  drawPie(rollupCounts(getSearchOnlyProjects()));
 });
 
 // Initial render
 renderList();
-drawPie(rollupByYear(searchOnly(all)));
+drawPie(rollupCounts(getSearchOnlyProjects()));
