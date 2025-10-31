@@ -1,6 +1,6 @@
 // /projects/projects.js
 import { fetchJSON, renderProjects } from '../global.js';
-import * as d3 from 'https://cdn.jsdelivr.net/npm/[email protected]/+esm'; // lab uses jsDelivr +esm import  :contentReference[oaicite:4]{index=4}
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm'; // lab uses jsDelivr +esm import  :contentReference[oaicite:4]{index=4}
 
 const container = document.querySelector('.projects');
 const titleEl = document.querySelector('.projects-title');
