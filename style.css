@@ -463,8 +463,9 @@ html[data-theme="dark"] .pill {
 
 /* Keep legend pill color the same when selected (just a ring) */
 .legend li.is-selected {
-  box-shadow: 0 0 0 2px var(--color) inset; /* subtle ring */
-  /* background & text colors unchanged */
+  outline: 2px solid var(--color);
+  outline-offset: 2px;
+  box-shadow: none; 
 }
 
 /* Remove rectangle focus; use subtle effects that don't change hue */
@@ -480,8 +481,8 @@ html[data-theme="dark"] .pill {
   transform: scale(1.03);
 }
 #projects-pie-plot .slice.is-selected {
-  /* keep the same fill color; just add a gentle ring */
-  filter: drop-shadow(0 0 0 2px rgba(0,0,0,.25));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+  transform: scale(1.03);
 }
 
 /* Search input look like the lab */
