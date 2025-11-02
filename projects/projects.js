@@ -54,73 +54,61 @@ function renderList() {
 }
 
 // --- Pie + Legend (keeps slice colors identical when selected) ---
-function drawPie(data) {
-  if (!window.d3 || !data?.length) return;   // graceful if D3 missing
+  // --- Selection/hover helpers (sticky selection) ---
+  function applySelectionStyling() {
+    const hasSel = !!state.selectedYear;
 
-  const d3 = window.d3;
-  const svg = d3.select(svgEl);
-  const legend = d3.select(legendEl);
+    // keep selected slice/pill highlighted, gray out others
+    arcs
+      .classed('is-selected', d => d.data.label === state.selectedYear)
+      .classed('is-hovered',  d => d.data.label === state.selectedYear) // keep hover look on selected
+      .classed('dimmed',      d => hasSel && d.data.label !== state.selectedYear)
+      .attr('opacity',        d => (hasSel && d.data.label !== state.selectedYear ? 0.35 : 1));
 
-  svg.selectAll('*').remove();
-  legend.selectAll('*').remove();
+    items
+      .classed('is-selected', d => d.label === state.selectedYear)
+      .classed('is-hovered',  d => d.label === state.selectedYear) // same hover look on legend pill
+      .classed('dimmed',      d => hasSel && d.label !== state.selectedYear);
+  }
 
-  const colors = d3.scaleOrdinal(d3.schemeTableau10);
-  const arc = d3.arc().innerRadius(24).outerRadius(48); // donut
-  const pie = d3.pie().value(d => d.value).sort(null);
-
-  const g = svg.append('g');
-
-  const arcs = g.selectAll('path')
-    .data(pie(data))
-    .enter()
-    .append('path')
-    .attr('class', 'slice')
-    .attr('d', arc)
-    .attr('fill', (_, i) => colors(i))        // <-- fill color never changes
-    .attr('stroke', '#fff')                   // thin separators
-    .attr('stroke-linejoin', 'round')
-    .attr('vector-effect', 'non-scaling-stroke')
-    .attr('tabindex', 0)
-    .attr('role', 'button')
-    .attr('aria-label', d => `Filter year ${d.data.label} (${d.data.value})`);
-
-  const items = legend.selectAll('li')
-    .data(data)
-    .enter()
-    .append('li')
-    .attr('style', (_, i) => `--color: ${colors(i)}`)  // swatch color stays the same
-    .attr('tabindex', 0)
-    .html(d => `<span class="swatch"></span> ${d.label} <em>(${d.value})</em>`);
-
-  // Hover & select (no color change; just subtle ring/scale from CSS)
+  // When something is selected, ignore hover so the sticky highlight stays obvious
   function setHover(label) {
+    if (state.selectedYear) return; // no hover when locked in
     arcs.classed('is-hovered', d => d.data.label === label)
         .attr('opacity', d => (label && d.data.label !== label ? 0.35 : 1));
     items.classed('is-hovered', d => d.label === label);
   }
   const clearHover = () => setHover(null);
 
-  function toggleSelect(label) {
-    state.selectedYear = (state.selectedYear === label) ? null : label;
+  // Sticky select: clicking the same label keeps it selected (no toggle-off)
+  function selectYear(label) {
+    state.selectedYear = label;
 
-    arcs.classed('is-selected', d => d.data.label === state.selectedYear);
-    items.classed('is-selected', d => d.label === state.selectedYear);
-
-    // Re-render cards and rebuild pie from SEARCH-only data (so legend/pie reflect current query)
+    applySelectionStyling();
     renderList();
+
+    // Rebuild the pie/legend from SEARCH-only set so UI reflects the query
     drawPie(rollupCounts(getSearchOnlyProjects()));
   }
 
+  // Wire events
   arcs.on('mouseenter', (_, d) => setHover(d.data.label))
       .on('mouseleave', clearHover)
-      .on('click',     (_, d) => toggleSelect(d.data.label))
-      .on('keydown',   (ev, d) => { if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.data.label); });
+      .on('click',     (_, d) => selectYear(d.data.label))
+      .on('keydown',   (ev, d) => {
+        if (ev.key === 'Enter' || ev.key === ' ') selectYear(d.data.label);
+      });
 
   items.on('mouseenter', (_, d) => setHover(d.label))
        .on('mouseleave', clearHover)
-       .on('click',     (_, d) => toggleSelect(d.label))
-       .on('keydown',   (ev, d) => { if (ev.key === 'Enter' || ev.key === ' ') toggleSelect(d.label); });
-}
+       .on('click',     (_, d) => selectYear(d.label))
+       .on('keydown',   (ev, d) => {
+         if (ev.key === 'Enter' || ev.key === ' ') selectYear(d.label);
+       });
+
+  // If there was already a selection, apply its styling immediately
+  applySelectionStyling();
+
 
 // --- Search wiring (cards = search ∩ year; pie = search-only) ---
 searchEl?.addEventListener('input', () => {
