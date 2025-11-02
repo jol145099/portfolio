@@ -1,4 +1,7 @@
 // /projects/projects.js
+// Projects page: sticky year selection + search∩year filtering.
+// Keeps your existing styling; selected year stays highlighted; others dim.
+
 import { fetchJSON, renderProjects } from '../global.js';
 
 const $ = (s) => document.querySelector(s);
@@ -8,14 +11,15 @@ const searchEl = $('#project-search');
 const svgEl    = $('#projects-pie-plot');
 const legendEl = document.querySelector('.legend');
 
+// ---------- Data ----------
 let allProjects = await fetchJSON('../lib/projects.json');
 if (!Array.isArray(allProjects)) allProjects = [];
 titleEl.textContent = `Projects (${allProjects.length})`;
 
-// --- State: search ∩ year (both apply together) ---
+// ---------- State (combined filters, sticky selection) ----------
 const state = { query: '', selectedYear: null };
 
-// --- Helpers ---
+// ---------- Helpers ----------
 const norm = v => (v ?? '').toString().toLowerCase();
 
 function getSearchOnlyProjects() {
@@ -27,7 +31,7 @@ function getSearchOnlyProjects() {
 }
 
 function getVisibleProjects() {
-  // COMBINED FILTERS: search first, then year
+  // search ∩ year (both applied together)
   let items = getSearchOnlyProjects();
   if (state.selectedYear) {
     items = items.filter(p => String(p.year) === String(state.selectedYear));
@@ -46,34 +50,74 @@ function rollupCounts(items) {
               .sort((a,b) => a.label.localeCompare(b.label));
 }
 
-// --- Cards ---
+// ---------- Cards ----------
 function renderList() {
   const items = getVisibleProjects();
   renderProjects(items, cardsEl, 'h2');
   titleEl.textContent = `Projects (${items.length})`;
 }
 
-// --- Pie + Legend (keeps slice colors identical when selected) ---
-  // --- Selection/hover helpers (sticky selection) ---
+// ---------- Pie + Legend ----------
+function drawPie(data) {
+  // If D3 didn't load for any reason, don't break the page; cards still render.
+  if (!window.d3) return;
+  const d3 = window.d3;
+
+  const svg = d3.select(svgEl);
+  const legend = d3.select(legendEl);
+  svg.selectAll('*').remove();
+  legend.selectAll('*').remove();
+
+  if (!data?.length) return;
+
+  const colors = d3.scaleOrdinal(d3.schemeTableau10);
+  const arc = d3.arc().innerRadius(24).outerRadius(48); // donut look
+  const pie = d3.pie().value(d => d.value).sort(null);
+
+  const g = svg.append('g');
+
+  const arcs = g.selectAll('path')
+    .data(pie(data))
+    .enter()
+    .append('path')
+    .attr('class', 'slice')
+    .attr('d', arc)
+    .attr('fill', (_, i) => colors(i))  // color never changes on select
+    .attr('stroke', '#fff')
+    .attr('stroke-linejoin', 'round')
+    .attr('vector-effect', 'non-scaling-stroke')
+    .attr('tabindex', 0)
+    .attr('role', 'button')
+    .attr('aria-label', d => `Filter year ${d.data.label} (${d.data.value})`);
+
+  const items = legend.selectAll('li')
+    .data(data)
+    .enter()
+    .append('li')
+    .attr('style', (_, i) => `--color: ${colors(i)}`)
+    .attr('tabindex', 0)
+    .html(d => `<span class="swatch"></span> ${d.label} <em>(${d.value})</em>`);
+
+  // --- Selection / hover (sticky) ---
   function applySelectionStyling() {
     const hasSel = !!state.selectedYear;
 
-    // keep selected slice/pill highlighted, gray out others
+    // Selected keeps hover look; others dim
     arcs
       .classed('is-selected', d => d.data.label === state.selectedYear)
-      .classed('is-hovered',  d => d.data.label === state.selectedYear) // keep hover look on selected
+      .classed('is-hovered',  d => d.data.label === state.selectedYear) // keep hover animation on selected
       .classed('dimmed',      d => hasSel && d.data.label !== state.selectedYear)
       .attr('opacity',        d => (hasSel && d.data.label !== state.selectedYear ? 0.35 : 1));
 
     items
       .classed('is-selected', d => d.label === state.selectedYear)
-      .classed('is-hovered',  d => d.label === state.selectedYear) // same hover look on legend pill
+      .classed('is-hovered',  d => d.label === state.selectedYear)
       .classed('dimmed',      d => hasSel && d.label !== state.selectedYear);
   }
 
-  // When something is selected, ignore hover so the sticky highlight stays obvious
+  // Ignore hover when locked to a selection (keeps the sticky look obvious)
   function setHover(label) {
-    if (state.selectedYear) return; // no hover when locked in
+    if (state.selectedYear) return;
     arcs.classed('is-hovered', d => d.data.label === label)
         .attr('opacity', d => (label && d.data.label !== label ? 0.35 : 1));
     items.classed('is-hovered', d => d.label === label);
@@ -87,11 +131,12 @@ function renderList() {
     applySelectionStyling();
     renderList();
 
-    // Rebuild the pie/legend from SEARCH-only set so UI reflects the query
+    // Rebuild pie from SEARCH-only set so pie/legend reflect the query,
+    // but keep the sticky selection & dimming rules.
     drawPie(rollupCounts(getSearchOnlyProjects()));
   }
 
-  // Wire events
+  // Events
   arcs.on('mouseenter', (_, d) => setHover(d.data.label))
       .on('mouseleave', clearHover)
       .on('click',     (_, d) => selectYear(d.data.label))
@@ -106,17 +151,17 @@ function renderList() {
          if (ev.key === 'Enter' || ev.key === ' ') selectYear(d.label);
        });
 
-  // If there was already a selection, apply its styling immediately
+  // Apply styles immediately if a selection already exists
   applySelectionStyling();
+}
 
-
-// --- Search wiring (cards = search ∩ year; pie = search-only) ---
+// ---------- Search ----------
 searchEl?.addEventListener('input', () => {
   state.query = searchEl.value;
   renderList();
-  drawPie(rollupCounts(getSearchOnlyProjects()));
+  drawPie(rollupCounts(getSearchOnlyProjects())); // pie reflects current query
 });
 
-// Initial render
+// ---------- Initial render ----------
 renderList();
 drawPie(rollupCounts(getSearchOnlyProjects()));
