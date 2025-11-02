@@ -99,13 +99,13 @@ function drawPie(data) {
     .html(d => `<span class="swatch"></span> ${d.label} <em>(${d.value})</em>`);
 
   // --- Selection / hover (sticky) ---
+  // --- Selection/hover helpers (toggle-able selection) ---
   function applySelectionStyling() {
     const hasSel = !!state.selectedYear;
 
-    // Selected keeps hover look; others dim
     arcs
       .classed('is-selected', d => d.data.label === state.selectedYear)
-      .classed('is-hovered',  d => d.data.label === state.selectedYear) // keep hover animation on selected
+      .classed('is-hovered',  d => d.data.label === state.selectedYear) // keep hover look on selected
       .classed('dimmed',      d => hasSel && d.data.label !== state.selectedYear)
       .attr('opacity',        d => (hasSel && d.data.label !== state.selectedYear ? 0.35 : 1));
 
@@ -115,7 +115,7 @@ function drawPie(data) {
       .classed('dimmed',      d => hasSel && d.label !== state.selectedYear);
   }
 
-  // Ignore hover when locked to a selection (keeps the sticky look obvious)
+  // Allow hover only when nothing is selected (optional; keep if you like)
   function setHover(label) {
     if (state.selectedYear) return;
     arcs.classed('is-hovered', d => d.data.label === label)
@@ -124,35 +124,35 @@ function drawPie(data) {
   }
   const clearHover = () => setHover(null);
 
-  // Sticky select: clicking the same label keeps it selected (no toggle-off)
-  function selectYear(label) {
-    state.selectedYear = label;
+  // TOGGLE: clicking the same label again unselects it
+  function toggleYear(label) {
+    state.selectedYear = (state.selectedYear === label) ? null : label;
 
     applySelectionStyling();
     renderList();
 
-    // Rebuild pie from SEARCH-only set so pie/legend reflect the query,
-    // but keep the sticky selection & dimming rules.
+    // Rebuild the pie from SEARCH-only results so legend/pie reflect current query
     drawPie(rollupCounts(getSearchOnlyProjects()));
   }
 
   // Events
   arcs.on('mouseenter', (_, d) => setHover(d.data.label))
       .on('mouseleave', clearHover)
-      .on('click',     (_, d) => selectYear(d.data.label))
+      .on('click',     (_, d) => toggleYear(d.data.label))
       .on('keydown',   (ev, d) => {
-        if (ev.key === 'Enter' || ev.key === ' ') selectYear(d.data.label);
+        if (ev.key === 'Enter' || ev.key === ' ') toggleYear(d.data.label);
       });
 
   items.on('mouseenter', (_, d) => setHover(d.label))
-       .on('mouseleave', clearHover)
-       .on('click',     (_, d) => selectYear(d.label))
-       .on('keydown',   (ev, d) => {
-         if (ev.key === 'Enter' || ev.key === ' ') selectYear(d.label);
-       });
+      .on('mouseleave', clearHover)
+      .on('click',     (_, d) => toggleYear(d.label))
+      .on('keydown',   (ev, d) => {
+        if (ev.key === 'Enter' || ev.key === ' ') toggleYear(d.label);
+      });
 
   // Apply styles immediately if a selection already exists
   applySelectionStyling();
+
 }
 
 // ---------- Search ----------
