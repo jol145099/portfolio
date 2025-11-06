@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive US Earthquakes (M≥4.5) — D3 Map</title>
+  <!-- D3 & TopoJSON -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <style>
+    :root { --bg:#0b1117; --panel:#121a23; --text:#eaeef3; --sub:#b7c0c9; --accent:#5aa9e6; }
+    html, body { height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 1rem 1.25rem; border-bottom: 1px solid #1f2a35; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+    header h1 { font-size: clamp(1.1rem, 2vw, 1.4rem); margin:0; font-weight: 650; }
+    header .subtitle { color: var(--sub); font-size: .9rem; }
+    .wrap { display:grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100% - 73px); }
+    aside { background: var(--panel); border-right: 1px solid #1f2a35; padding: 1rem; overflow:auto; }
+    main { position: relative; }
+    .controls h2 { font-size: 1rem; margin: 0 0 .75rem; color: var(--sub); font-weight: 600; letter-spacing:.2px; }
+    .control { margin-bottom: 1.25rem; }
+    .control label { display:block; font-size:.9rem; margin-bottom:.35rem; color: var(--text); }
+    .row { display:flex; align-items:center; gap:.6rem; }
+    input[type="range"] { width: 100%; }
+    .small { font-size:.85rem; color: var(--sub); }
+    .pill { display:inline-flex; align-items:center; gap:.4rem; border:1px solid #203141; padding:.35rem .5rem; border-radius:999px; color:var(--sub); font-size:.8rem; }
+    .metrics { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; margin-top:.5rem; }
+    .metric { background:#0e1620; border:1px solid #1e2a36; border-radius:.6rem; padding:.6rem .75rem; }
+    .metric .k { font-size:.8rem; color:var(--sub); }
+    .metric .v { font-weight:700; font-size:1.1rem; }
+    .legend { position:absolute; right: 12px; bottom: 12px; background: rgba(18,26,35,.9); border:1px solid #1e2a36; border-radius:.6rem; padding:.6rem .75rem; color: var(--text); }
+    .legend h3 { margin:.1rem 0 .5rem; font-size:.9rem; color:var(--sub); font-weight:600; }
+    .legend .row { align-items: center; gap:.5rem; margin:.3rem 0; }
+    .legend svg { display:block; }
+
+    .tooltip { position: fixed; pointer-events: none; z-index: 10; background: #0f1721; color: var(--text); border: 1px solid #1f2a35; border-radius: .5rem; padding: .5rem .6rem; font-size: .85rem; box-shadow: 0 6px 18px rgba(0,0,0,.25); opacity: 0; transition: opacity .15s ease; max-width: 280px; }
+    .tooltip .place { font-weight: 650; }
+    .tooltip .dim { color: var(--sub); }
+
+    .note { color: var(--sub); font-size:.8rem; line-height:1.35; }
+    .btn { cursor:pointer; border:1px solid #1e2a36; background:#0f1924; color:var(--text); border-radius:.5rem; padding:.45rem .65rem; font-size:.85rem; }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+
+    .map-container { position: absolute; inset: 0; }
+    svg { width: 100%; height: 100%; display: block; }
+    .states { fill:#0d141d; stroke:#1e2a36; stroke-width:0.7; }
+    .state-borders { fill:none; stroke:#1e2a36; stroke-width:1.1; pointer-events:none; }
+    .quake { fill-opacity:.85; stroke: #09121b; stroke-width: 0.6; }
+    .quake.hidden { display:none; }
+    .hint { position:absolute; left:12px; bottom:12px; color:var(--sub); background: rgba(18,26,35,.9); border:1px solid #1e2a36; border-radius:.6rem; padding:.5rem .6rem; font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive US Earthquakes (M≥4.5)</h1>
+    <span class="subtitle">Pan, zoom, and filter by year & magnitude. Hover for details.</span>
+    <span class="pill" title="Data file">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      us_earthquakes_m4.5.csv
+    </span>
+  </header>
+  <div class="wrap">
+    <aside>
+      <div class="controls">
+        <h2>Filters</h2>
+        <div class="control" id="year-control">
+          <label>Year range: <span id="year-range-label" class="small"></span></label>
+          <div class="row">
+            <input id="year-min" type="range" min="1900" max="2025" value="1900" step="1">
+            <input id="year-max" type="range" min="1900" max="2025" value="2025" step="1">
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <button class="btn" id="play">▶︎ Play</button>
+            <button class="btn" id="reset">Reset</button>
+          </div>
+        </div>
+        <div class="control">
+          <label>Minimum magnitude: <span id="mag-label" class="small">4.5</span></label>
+          <input id="mag-min" type="range" min="4.5" max="8.0" value="4.5" step="0.1">
+        </div>
+        <div class="control">
+          <label>Depth filter (km): <span id="depth-label" class="small">All</span></label>
+          <div class="row">
+            <input id="depth-min" type="range" min="0" max="700" value="0" step="5">
+            <input id="depth-max" type="range" min="0" max="700" value="700" step="5">
+          </div>
+          <div class="note">Note: many historical events have missing depth; those are shown as gray.</div>
+        </div>
+        <div class="control">
+          <label>Search place/region</label>
+          <input id="search" type="text" placeholder="e.g., Alaska, California" style="width:100%; padding:.5rem; border-radius:.5rem; border:1px solid #1e2a36; background:#0f1721; color:var(--text)"/>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="k">Visible quakes</div><div class="v" id="metric-count">—</div></div>
+          <div class="metric"><div class="k">Max magnitude</div><div class="v" id="metric-maxmag">—</div></div>
+        </div>
+        <p class="note" style="margin-top:1rem">Tip: drag to pan, scroll or pinch to zoom. Double‑click to zoom in, Shift+double‑click to zoom out.</p>
+        <p class="note">Hosting locally? Run a simple web server (e.g., <code>python -m http.server</code>) to avoid CORS issues.</p>
+      </div>
+    </aside>
+    <main>
+      <div class="map-container">
+        <svg id="map" role="img" aria-label="US map with earthquakes"></svg>
+        <div class="legend" id="legend"></div>
+        <div class="hint">Depth colors · Size by magnitude</div>
+      </div>
+      <div class="tooltip" id="tooltip" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <script>
+  (async function() {
+    // ====== Config ======
+    const csvPath = 'us_earthquakes_m4.5.csv'; // Place this HTML next to the CSV
+    const usTopoURL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
+
+    const width = document.body.clientWidth;
+    const height = Math.max(window.innerHeight - 90, 520);
+
+    const svg = d3.select('#map').attr('viewBox', [0,0,width,height]);
+    const g = svg.append('g'); // zoomable group
+
+    const tooltip = d3.select('#tooltip');
+
+    const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height) * 1.25);
+    const path = d3.geoPath(projection);
+
+    const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]); // deeper => cooler color end
+    const r = d3.scaleSqrt().domain([4.5, 8]).range([1.5, 12]);
+
+    // ====== Load data ======
+    const [usTopo, rows] = await Promise.all([
+      d3.json(usTopoURL),
+      d3.csv(csvPath, d => {
+        const t = new Date(d.time);
+        return {
+          time: t,
+          year: isNaN(+t) ? null : t.getUTCFullYear(),
+          lat: +d.latitude,
+          lon: +d.longitude,
+          depth: d.depth === '' ? null : +d.depth,
+          mag: +d.mag,
+          place: d.place || '',
+          region: d.region || '',
+          magType: d.magType || '',
+        };
+      })
+    ]);
+
+    // Filter to plausible US bounding box (includes Alaska, Hawaii, offshore)
+    let data = rows.filter(d => isFinite(d.lat) && isFinite(d.lon) && isFinite(d.mag) && d.mag >= 4.5);
+
+    // Compute extents
+    const yearExtent = d3.extent(data, d => d.year).map(v => v ?? 1900);
+    const depthExtent = d3.extent(data, d => d.depth).map(v => v ?? 0);
+
+    // Init controls with data-driven bounds
+    const yearMinEl = document.getElementById('year-min');
+    const yearMaxEl = document.getElementById('year-max');
+    const yearLabel = document.getElementById('year-range-label');
+    const magMinEl = document.getElementById('mag-min');
+    const magLabel = document.getElementById('mag-label');
+    const depthMinEl = document.getElementById('depth-min');
+    const depthMaxEl = document.getElementById('depth-max');
+    const depthLabel = document.getElementById('depth-label');
+    const searchEl = document.getElementById('search');
+    const countEl = document.getElementById('metric-count');
+    const maxMagEl = document.getElementById('metric-maxmag');
+
+    const yrMin = Math.max(1900, yearExtent[0] || 1900);
+    const yrMax = Math.min(2025, yearExtent[1] || 2025);
+    yearMinEl.min = yearMaxEl.min = yrMin;
+    yearMinEl.max = yearMaxEl.max = yrMax;
+    yearMinEl.value = yrMin;
+    yearMaxEl.value = yrMax;
+
+    const dpMin = Math.max(0, isFinite(depthExtent[0]) ? Math.floor(depthExtent[0]) : 0);
+    const dpMax = Math.min(700, isFinite(depthExtent[1]) ? Math.ceil(depthExtent[1]) : 700);
+    depthMinEl.min = 0; depthMinEl.max = 700; depthMinEl.value = dpMin;
+    depthMaxEl.min = 0; depthMaxEl.max = 700; depthMaxEl.value = dpMax;
+
+    function syncLabels(){
+      yearLabel.textContent = `${yearMinEl.value} – ${yearMaxEl.value}`;
+      magLabel.textContent = +magMinEl.value;
+      const d1 = +depthMinEl.value, d2 = +depthMaxEl.value;
+      depthLabel.textContent = (d1<=0 && d2>=700) ? 'All' : `${d1}–${d2}`;
+    }
+    syncLabels();
+
+    // ====== Base map ======
+    const states = topojson.feature(usTopo, usTopo.objects.states);
+    const mesh = topojson.mesh(usTopo, usTopo.objects.states, (a,b) => a!==b);
+
+    g.append('path').attr('class','states').attr('d', path(states));
+    g.append('path').attr('class','state-borders').attr('d', path(mesh));
+
+    // ====== Quakes layer ======
+    const quakeLayer = g.append('g').attr('class','quakes');
+
+    function update(){
+      const y0 = +yearMinEl.value, y1 = +yearMaxEl.value;
+      const m0 = +magMinEl.value;
+      const d0 = +depthMinEl.value, d1 = +depthMaxEl.value;
+      const q = (searchEl.value || '').trim().toLowerCase();
+
+      const filtered = data.filter(d => {
+        const withinYear = d.year==null ? false : (d.year>=y0 && d.year<=y1);
+        const withinMag = d.mag>=m0;
+        const withinDepth = (d.depth==null) ? (d0<=0 && d1>=700) : (d.depth>=d0 && d.depth<=d1);
+        const withinText = q==='' || d.place.toLowerCase().includes(q) || d.region.toLowerCase().includes(q);
+        const projected = projection([d.lon, d.lat]);
+        return withinYear && withinMag && withinDepth && withinText && projected; // skip points not projectable
+      });
+
+      // DATA JOIN
+      const sel = quakeLayer.selectAll('circle.quake').data(filtered, d => `${d.time?.toISOString?.()||''}-${d.lat}-${d.lon}-${d.mag}`);
+
+      // EXIT
+      sel.exit().transition().duration(150).attr('r', 0).remove();
+
+      // UPDATE + ENTER
+      sel.join(
+        enter => enter.append('circle')
+          .attr('class','quake')
+          .attr('cx', d => projection([d.lon,d.lat])[0])
+          .attr('cy', d => projection([d.lon,d.lat])[1])
+          .attr('r', 0)
+          .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
+          .on('mouseenter', (event, d) => showTooltip(event, d))
+          .on('mousemove', (event, d) => moveTooltip(event))
+          .on('mouseleave', hideTooltip)
+          .transition().duration(250)
+          .attr('r', d => r(d.mag)),
+        update => update
+          .call(update => update
+            .transition().duration(200)
+            .attr('cx', d => projection([d.lon,d.lat])[0])
+            .attr('cy', d => projection([d.lon,d.lat])[1])
+            .attr('r', d => r(d.mag))
+            .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
+          )
+      );
+
+      // Metrics
+      const count = filtered.length;
+      const maxMag = d3.max(filtered, d => d.mag) ?? '—';
+      countEl.textContent = d3.format(',')(count);
+      maxMagEl.textContent = typeof maxMag === 'number' ? maxMag.toFixed(2) : '—';
+    }
+
+    function showTooltip(event, d){
+      const fmt = d3.format('.2f');
+      const dateStr = d.time ? d.time.toISOString().replace('T',' ').slice(0,19) + ' UTC' : 'Unknown time';
+      tooltip.html(
+        `<div class="place">${d.place || 'Unknown place'}</div>
+         <div class="dim">${dateStr}</div>
+         <div>Mag <b>${fmt(d.mag)}</b> (${d.magType || '—'})</div>
+         <div>Depth: <b>${d.depth==null ? '—' : fmt(d.depth)+' km'}</b></div>
+         <div class="dim">${d.region || ''}</div>`
+      );
+      tooltip.style('opacity', 1).attr('aria-hidden','false');
+      moveTooltip(event);
+    }
+    function moveTooltip(event){
+      const pad = 14;
+      const x = event.clientX + pad;
+      const y = event.clientY + pad;
+      tooltip.style('left', x + 'px').style('top', y + 'px');
+    }
+    function hideTooltip(){ tooltip.style('opacity', 0).attr('aria-hidden','true'); }
+
+    // ====== Zoom ======
+    const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (event) => {
+      g.attr('transform', event.transform);
+    });
+    svg.call(zoom);
+
+    // ====== Legends ======
+    buildLegends();
+    function buildLegends(){
+      const container = d3.select('#legend');
+      container.html('');
+      container.append('h3').text('Legend');
+      const colorSvg = container.append('svg').attr('width', 200).attr('height', 36);
+      const gradId = 'grad-depth';
+      const defs = colorSvg.append('defs');
+      const grad = defs.append('linearGradient').attr('id', gradId);
+      grad.selectAll('stop')
+        .data(d3.ticks(0,1,10))
+        .join('stop')
+        .attr('offset', d => (d*100)+'%')
+        .attr('stop-color', d => color(d*700));
+      colorSvg.append('rect').attr('x',10).attr('y',8).attr('width',160).attr('height',12).attr('fill', `url(#${gradId})`).attr('stroke','#1e2a36');
+      colorSvg.append('text').attr('x',10).attr('y',30).attr('fill','#b7c0c9').attr('font-size','.8rem').text('700 km');
+      colorSvg.append('text').attr('x',170).attr('y',30).attr('fill','#b7c0c9').attr('font-size','.8rem').attr('text-anchor','end').text('0 km');
+
+      const sizeSvg = container.append('svg').attr('width', 200).attr('height', 60);
+      const mags = [5, 6.5, 8];
+      sizeSvg.selectAll('circle').data(mags).join('circle')
+        .attr('cx', (d,i)=> 30 + i*60).attr('cy', 28)
+        .attr('r', d => r(d)).attr('fill', '#5aa9e6').attr('class','quake');
+      sizeSvg.selectAll('text').data(mags).join('text')
+        .attr('x', (d,i)=> 30 + i*60).attr('y', 55).attr('fill','#b7c0c9')
+        .attr('font-size','.8rem').attr('text-anchor','middle').text(d => 'M ' + d);
+    }
+
+    // ====== Interactions ======
+    function clampYearInputs(){
+      if (+yearMinEl.value > +yearMaxEl.value) yearMinEl.value = yearMaxEl.value;
+    }
+
+    for (const el of [yearMinEl, yearMaxEl, magMinEl, depthMinEl, depthMaxEl]){
+      el.addEventListener('input', () => { clampYearInputs(); syncLabels(); update(); });
+    }
+    searchEl.addEventListener('input', () => update());
+
+    document.getElementById('reset').addEventListener('click', () => {
+      yearMinEl.value = yrMin; yearMaxEl.value = yrMax; magMinEl.value = 4.5; depthMinEl.value = dpMin; depthMaxEl.value = dpMax; searchEl.value = '';
+      syncLabels(); update();
+      svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+    });
+
+    // Simple play: sweep the max year
+    let playing = false; let timer = null;
+    const playBtn = document.getElementById('play');
+    playBtn.addEventListener('click', () => {
+      playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶︎ Play';
+      if (playing){
+        timer = d3.interval(() => {
+          let next = +yearMaxEl.value + 1;
+          if (next > yrMax) next = yrMin;
+          yearMaxEl.value = next; if (+yearMinEl.value>next) yearMinEl.value = next; syncLabels(); update();
+        }, 400);
+      } else if (timer) { timer.stop(); }
+    });
+
+    // Initial render
+    update();
+
+    // Responsive resize
+    window.addEventListener('resize', () => {
+      const w = document.body.clientWidth;
+      const h = Math.max(window.innerHeight - 90, 520);
+      svg.attr('viewBox', [0,0,w,h]);
+      projection.translate([w/2, h/2]).scale(Math.min(w, h) * 1.25);
+      update();
+    });
+  })();
+  </script>
+</body>
+</html>
