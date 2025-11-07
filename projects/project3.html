@@ -17,7 +17,7 @@
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
   /* --- Layout: left sidebar + map view --- */
-  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 300px 1fr; gap:0 }
+  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 400px 1fr; gap:0 }
   @media (max-width:900px){ .layout{ grid-template-columns: 260px 1fr; } }
 
   .sidebar{
@@ -134,7 +134,12 @@
           <div class="valuebox">
             <span>Start</span><input id="depthMinN" type="number" step="10">
             <span>End</span><input id="depthMaxN" type="number" step="10">
-            <label style="justify-self:center; display:flex; align-items:center; gap:6px; color:var(--muted);">
+          </div>
+        </div>
+        <div class="row values" style="margin-top:-4px;">
+          <div class="label"></div>
+          <div class="valuebox">
+            <label style="display:flex; align-items:center; gap:6px; color:var(--muted);">
               <input id="includeNA" type="checkbox"> Include N/A depth
             </label>
           </div>
