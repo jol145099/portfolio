@@ -4,10 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Interactive US Earthquakes (M≥4.5) — D3 Map</title>
-  <!-- D3 & TopoJSON -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
     :root { --bg:#0b1117; --panel:#121a23; --text:#eaeef3; --sub:#b7c0c9; --accent:#5aa9e6; }
     html, body { height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); }
@@ -30,7 +28,6 @@
     .metric .v { font-weight:700; font-size:1.1rem; }
     .legend { position:absolute; right: 12px; bottom: 12px; background: rgba(18,26,35,.9); border:1px solid #1e2a36; border-radius:.6rem; padding:.6rem .75rem; color: var(--text); }
     .legend h3 { margin:.1rem 0 .5rem; font-size:.9rem; color:var(--sub); font-weight:600; }
-    .legend .row { align-items: center; gap:.5rem; margin:.3rem 0; }
     .legend svg { display:block; }
 
     .tooltip { position: fixed; pointer-events: none; z-index: 10; background: #0f1721; color: var(--text); border: 1px solid #1f2a35; border-radius: .5rem; padding: .5rem .6rem; font-size: .85rem; box-shadow: 0 6px 18px rgba(0,0,0,.25); opacity: 0; transition: opacity .15s ease; max-width: 280px; }
@@ -39,14 +36,12 @@
 
     .note { color: var(--sub); font-size:.8rem; line-height:1.35; }
     .btn { cursor:pointer; border:1px solid #1e2a36; background:#0f1924; color:var(--text); border-radius:.5rem; padding:.45rem .65rem; font-size:.85rem; }
-    .btn:disabled { opacity:.55; cursor:not-allowed; }
 
     .map-container { position: absolute; inset: 0; }
     svg { width: 100%; height: 100%; display: block; }
     .states { fill:#0d141d; stroke:#1e2a36; stroke-width:0.7; }
     .state-borders { fill:none; stroke:#1e2a36; stroke-width:1.1; pointer-events:none; }
-    .quake { fill-opacity:.85; stroke: #09121b; stroke-width: 0.6; }
-    .quake.hidden { display:none; }
+    .quake { fill-opacity:.9; stroke: #09121b; stroke-width: 0.6; }
     .hint { position:absolute; left:12px; bottom:12px; color:var(--sub); background: rgba(18,26,35,.9); border:1px solid #1e2a36; border-radius:.6rem; padding:.5rem .6rem; font-size:.85rem; }
   </style>
 </head>
@@ -94,8 +89,6 @@
           <div class="metric"><div class="k">Visible quakes</div><div class="v" id="metric-count">—</div></div>
           <div class="metric"><div class="k">Max magnitude</div><div class="v" id="metric-maxmag">—</div></div>
         </div>
-        <p class="note" style="margin-top:1rem">Tip: drag to pan, scroll or pinch to zoom. Double‑click to zoom in, Shift+double‑click to zoom out.</p>
-        <p class="note">Hosting locally? Run a simple web server (e.g., <code>python -m http.server</code>) to avoid CORS issues.</p>
       </div>
     </aside>
     <main>
@@ -110,27 +103,22 @@
 
   <script>
   (async function() {
-    // ====== Config ======
-    const csvPath = 'us_earthquakes_m4.5.csv'; // Place this HTML next to the CSV
+    const csvPath = 'us_earthquakes_m4.5.csv';
     const usTopoURL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 
     const width = document.body.clientWidth;
     const height = Math.max(window.innerHeight - 90, 520);
 
     const svg = d3.select('#map').attr('viewBox', [0,0,width,height]);
-    const g = svg.append('g'); // zoomable group
-
+    const g = svg.append('g');
     const tooltip = d3.select('#tooltip');
 
     const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height) * 1.25);
     const path = d3.geoPath(projection);
 
-    // Color scale: depth (km). Domain reversed so deep (700) at left of legend.
     const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]).clamp(true);
-    // Size scale: magnitude
     const r = d3.scaleSqrt().domain([4.5, 8]).range([1.5, 12]);
 
-    // ====== Load data ======
     const [usTopo, rows] = await Promise.all([
       d3.json(usTopoURL),
       d3.csv(csvPath, d => {
@@ -149,13 +137,11 @@
       })
     ]);
 
-    let data = rows.filter(d => isFinite(d.lat) && isFinite(d.lon) && isFinite(d.mag) && d.mag >= 4.5);
+    const data = rows.filter(d => isFinite(d.lat) && isFinite(d.lon) && isFinite(d.mag) && d.mag >= 4.5);
 
-    // Extents for controls
     const yearExtent = d3.extent(data, d => d.year).map(v => v ?? 1900);
     const depthExtent = d3.extent(data, d => d.depth).map(v => v ?? 0);
 
-    // Controls
     const yearMinEl = document.getElementById('year-min');
     const yearMaxEl = document.getElementById('year-max');
     const yearLabel = document.getElementById('year-range-label');
@@ -188,14 +174,12 @@
     }
     syncLabels();
 
-    // ====== Basemap ======
     const states = topojson.feature(usTopo, usTopo.objects.states);
     const mesh = topojson.mesh(usTopo, usTopo.objects.states, (a,b) => a!==b);
 
     g.append('path').attr('class','states').attr('d', path(states));
     g.append('path').attr('class','state-borders').attr('d', path(mesh));
 
-    // ====== Quake layer ======
     const quakeLayer = g.append('g').attr('class','quakes');
 
     function update(){
@@ -209,11 +193,10 @@
         const withinMag = d.mag>=m0;
         const withinDepth = (d.depth==null) ? (d0<=0 && d1>=700) : (d.depth>=d0 && d.depth<=d1);
         const withinText = q==='' || d.place.toLowerCase().includes(q) || d.region.toLowerCase().includes(q);
-        const projected = projection([d.lon, d.lat]);
-        return withinYear && withinMag && withinDepth && withinText && projected;
+        return withinYear && withinMag && withinDepth && withinText && projection([d.lon, d.lat]);
       });
 
-      const sel = quakeLayer.selectAll('circle.quake').data(filtered, d => `${d.time?.toISOString?.()||''}-${d.lat}-${d.lon}-${d.mag}`);
+      const sel = quakeLayer.selectAll('circle.quake').data(filtered, d => `${+d.time}-${d.lat}-${d.lon}-${d.mag}`);
 
       sel.exit().transition().duration(150).attr('r', 0).remove();
 
@@ -223,6 +206,7 @@
           .attr('cx', d => projection([d.lon,d.lat])[0])
           .attr('cy', d => projection([d.lon,d.lat])[1])
           .attr('r', 0)
+          .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
           .style('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth), 'important')
           .on('mouseenter', (event, d) => showTooltip(event, d))
           .on('mousemove', (event, d) => moveTooltip(event))
@@ -235,11 +219,11 @@
             .attr('cx', d => projection([d.lon,d.lat])[0])
             .attr('cy', d => projection([d.lon,d.lat])[1])
             .attr('r', d => r(d.mag))
+            .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
             .style('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth), 'important')
           )
       );
 
-      // Metrics
       const count = filtered.length;
       const maxMag = d3.max(filtered, d => d.mag) ?? '—';
       countEl.textContent = d3.format(',')(count);
@@ -261,45 +245,38 @@
     }
     function moveTooltip(event){
       const pad = 14;
-      const x = event.clientX + pad;
-      const y = event.clientY + pad;
-      tooltip.style('left', x + 'px').style('top', y + 'px');
+      tooltip.style('left', (event.clientX + pad) + 'px').style('top', (event.clientY + pad) + 'px');
     }
     function hideTooltip(){ tooltip.style('opacity', 0).attr('aria-hidden','true'); }
 
-    // ====== Zoom ======
     const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', (event) => {
       g.attr('transform', event.transform);
     });
     svg.call(zoom);
 
-    // ====== Legends (improved gradient) ======
     buildLegends();
     function buildLegends(){
       const container = d3.select('#legend');
       container.html('');
       container.append('h3').text('Legend');
 
-      // Depth gradient legend with more color stops
       const colorSvg = container.append('svg').attr('width', 220).attr('height', 54);
       const gradId = 'grad-depth';
       const defs = colorSvg.append('defs');
       const grad = defs.append('linearGradient').attr('id', gradId);
       grad.selectAll('stop')
-        .data(d3.range(0, 1.0001, 0.02)) // smooth gradient
+        .data(d3.range(0, 1.0001, 0.02))
         .join('stop')
         .attr('offset', t => (t*100)+'%')
-        // ensure LEFT = deep (700 km), RIGHT = shallow (0 km)
         .attr('stop-color', t => color(700 - t*700));
 
-      colorSvg.append('rect'))
+      colorSvg.append('rect')
         .attr('x',10).attr('y',12).attr('width',180).attr('height',14)
         .attr('fill', `url(#${gradId})`).attr('stroke','#1e2a36');
 
       colorSvg.append('text').attr('x',10).attr('y',42).attr('fill','#b7c0c9').attr('font-size','.8rem').text('700 km (deep)');
       colorSvg.append('text').attr('x',190).attr('y',42).attr('fill','#b7c0c9').attr('font-size','.8rem').attr('text-anchor','end').text('0 km (shallow)');
 
-      // Magnitude size legend
       const sizeSvg = container.append('svg').attr('width', 220).attr('height', 66);
       const mags = [5, 6.5, 8];
       sizeSvg.selectAll('circle').data(mags).join('circle')
@@ -310,10 +287,7 @@
         .attr('font-size','.8rem').attr('text-anchor','middle').text(d => 'M ' + d);
     }
 
-    // ====== Interactions ======
-    function clampYearInputs(){
-      if (+yearMinEl.value > +yearMaxEl.value) yearMinEl.value = yearMaxEl.value;
-    }
+    function clampYearInputs(){ if (+yearMinEl.value > +yearMaxEl.value) yearMinEl.value = yearMaxEl.value; }
 
     for (const el of [yearMinEl, yearMaxEl, magMinEl, depthMinEl, depthMaxEl]){
       el.addEventListener('input', () => { clampYearInputs(); syncLabels(); update(); });
@@ -326,7 +300,6 @@
       svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
     });
 
-    // Simple play: sweep the max year
     let playing = false; let timer = null;
     const playBtn = document.getElementById('play');
     playBtn.addEventListener('click', () => {
@@ -340,10 +313,8 @@
       } else if (timer) { timer.stop(); }
     });
 
-    // Initial render
     update();
 
-    // Responsive resize
     window.addEventListener('resize', () => {
       const w = document.body.clientWidth;
       const h = Math.max(window.innerHeight - 90, 520);
