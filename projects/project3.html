@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes (M≥4.5) — Ranged Filters</title>
+<title>D3 US Earthquakes — Ranged Filters + Auto Max Depth</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -13,30 +13,33 @@
   header { height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden; }
   header h1 { font-size:16px; margin:0; font-weight:600; }
   header .sub { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
-  .topbar {
+  .topbar{
     position:absolute; top:52px; left:8px; right:8px;
     display:flex; flex-wrap:wrap; gap:10px; align-items:center;
     background:rgba(15,20,28,.9); border:1px solid var(--grid); border-radius:10px;
     padding:8px 10px; z-index:2; backdrop-filter:blur(2px);
   }
-  .ctrl { display:grid; grid-template-columns:auto 64px; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
-  .ctrl input[type="range"] { grid-column:1 / -1; width:220px; }
-  .ctrl .inline { display:flex; gap:6px; align-items:center; }
-  .fill { flex:1 1 auto; }
-  .view { position:absolute; inset:48px 0 0 0; }
-  svg { width:100%; height:100%; display:block; }
-  .states { fill:#0d1320; stroke:#2a3a52; stroke-width:.6; }
-  .state-borders { fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none; }
-  .quake { stroke:#000; stroke-opacity:.45; }
-  .nodata { fill:#9aa0a6 !important; opacity:.9; }
-  .hud { font-size:11px; color:var(--muted); }
-  .legend-card { fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10; }
-  .legend-title { fill:var(--accent); font-weight:600; font-size:12px; }
-  .tooltip {
+  .ctrl{ display:grid; grid-template-columns:auto 70px; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
+  .ctrl input[type="range"]{ grid-column:1 / -1; width:220px; }
+  .ctrl .inline{ display:flex; gap:8px; align-items:center; white-space:nowrap; }
+  .ctrl .val{ width:70px; text-align:right; }
+  .fill{ flex:1 1 auto; }
+  .view{ position:absolute; inset:48px 0 0 0; }
+  svg{ width:100%; height:100%; display:block; }
+  .states{ fill:#0d1320; stroke:#2a3a52; stroke-width:.6; }
+  .state-borders{ fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none; }
+  .quake{ stroke:#000; stroke-opacity:.45; }
+  .nodata{ fill:#9aa0a6 !important; opacity:.9; }
+  .hud{ font-size:11px; color:var(--muted); }
+  .legend-card{ fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10; }
+  .legend-title{ fill:var(--accent); font-weight:600; font-size:12px; }
+  .tooltip{
     position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:var(--text);
     border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px;
     box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%, -120%);
   }
+  input[type="checkbox"]{ transform: translateY(1px); }
+  .disabled{ opacity:.5; }
 </style>
 </head>
 <body>
@@ -48,31 +51,43 @@
   <div class="topbar">
     <!-- Magnitude range -->
     <div class="ctrl">
-      <span>Magnitude min</span><span id="magMinVal">—</span>
+      <span>Magnitude min</span><span id="magMinVal" class="val">—</span>
       <input id="magMin" type="range" min="4.5" max="9" step="0.1" value="4.5" />
     </div>
     <div class="ctrl">
-      <span>Magnitude max</span><span id="magMaxVal">—</span>
+      <span>Magnitude max</span><span id="magMaxVal" class="val">—</span>
       <input id="magMax" type="range" min="4.5" max="9" step="0.1" value="9" />
     </div>
 
     <!-- Depth range -->
     <div class="ctrl">
-      <span>Depth min (km)</span><span id="depthMinVal">—</span>
+      <span>Depth min (km)</span><span id="depthMinVal" class="val">—</span>
       <input id="depthMin" type="range" min="0" max="700" step="10" value="0" />
     </div>
-    <div class="ctrl">
-      <span>Depth max (km)</span><span id="depthMaxVal">—</span>
+    <div class="ctrl" id="depthMaxCtrl">
+      <span>Depth max (km)</span><span id="depthMaxVal" class="val">—</span>
       <input id="depthMax" type="range" min="0" max="700" step="10" value="700" />
+    </div>
+
+    <!-- Depth options -->
+    <div class="ctrl" style="grid-template-columns:auto auto;">
+      <div class="inline">
+        <input id="autoDepthMax" type="checkbox" checked />
+        <label for="autoDepthMax">Auto max depth</label>
+      </div>
+      <div class="inline">
+        <input id="includeNA" type="checkbox" checked />
+        <label for="includeNA">Include N/A depth</label>
+      </div>
     </div>
 
     <!-- Year range -->
     <div class="ctrl">
-      <span>Year start</span><span id="yearStartVal">—</span>
+      <span>Year start</span><span id="yearStartVal" class="val">—</span>
       <input id="yearStart" type="range" min="1900" max="2025" step="1" value="1900" />
     </div>
     <div class="ctrl">
-      <span>Year end</span><span id="yearEndVal">—</span>
+      <span>Year end</span><span id="yearEndVal" class="val">—</span>
       <input id="yearEnd" type="range" min="1900" max="2025" step="1" value="2025" />
     </div>
 
@@ -118,7 +133,7 @@
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // Data (parse year)
+  // Data
   const data = await d3.csv("us_earthquakes_m4.5.csv", d => {
     const depth = d.depth === "" || d.depth == null ? null : +d.depth;
     const mag = d.mag === "" || d.mag == null ? null : +d.mag;
@@ -128,11 +143,11 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Scales & domains
+  // Domains
   const depthVals = points.map(d => d.depth).filter(v => v != null && isFinite(v));
   const depthDom = d3.extent(depthVals.length ? depthVals : [0,700]);
   const dDomMin = Math.max(0, Math.floor((depthDom[0] ?? 0)));
-  const dDomMax = Math.min(700, Math.ceil((depthDom[1] ?? 700)));
+  const dDomMax = Math.min(700, Math.ceil((depthDom[1] ?? 700)));  // dataset max (capped at 700)
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
 
   const magVals = points.map(d => d.mag).filter(v => v != null && isFinite(v));
@@ -149,6 +164,8 @@
   const depthMax = document.getElementById("depthMax");
   const yearStart = document.getElementById("yearStart");
   const yearEnd = document.getElementById("yearEnd");
+  const autoDepthMax = document.getElementById("autoDepthMax");
+  const includeNA = document.getElementById("includeNA");
 
   const magMinVal = document.getElementById("magMinVal");
   const magMaxVal = document.getElementById("magMaxVal");
@@ -156,46 +173,67 @@
   const depthMaxVal = document.getElementById("depthMaxVal");
   const yearStartVal = document.getElementById("yearStartVal");
   const yearEndVal = document.getElementById("yearEndVal");
+  const depthMaxCtrl = document.getElementById("depthMaxCtrl");
 
-  // Initialize ranges from data domains
+  // Initialize ranges
   magMin.min = Math.max(3.5, Math.floor((magDom[0] ?? 4.5) * 10) / 10);
   magMin.max = Math.ceil((magDom[1] ?? 9) * 10) / 10;
   magMax.min = magMin.min; magMax.max = magMin.max;
   magMin.value = magMin.min; magMax.value = magMax.max;
 
-  depthMin.min = 0; depthMin.max = 700;
-  depthMax.min = 0; depthMax.max = 700;
-  depthMin.value = dDomMin; depthMax.value = dDomMax;
+  depthMin.min = 0; depthMin.max = 700; depthMin.value = dDomMin;
+  depthMax.min = 0; depthMax.max = 700; depthMax.value = dDomMax; // will be auto if checkbox checked
 
   yearStart.min = yearDom[0]; yearStart.max = yearDom[1]; yearStart.value = yearDom[0];
   yearEnd.min = yearDom[0]; yearEnd.max = yearDom[1]; yearEnd.value = yearDom[1];
 
-  // Label sync helpers
-  function syncLabel(el, span, fmt=(v)=>v){ span.textContent = fmt(el.value); }
+  // Helpers
   const fmtMag = v => (+v).toFixed(1);
+  const getCSSVar = n => getComputedStyle(document.documentElement).getPropertyValue(n) || '#9fb0c6';
 
   function clampPair(minEl, maxEl, source) {
     if (+minEl.value > +maxEl.value) {
       if (source === "min") maxEl.value = minEl.value; else minEl.value = maxEl.value;
     }
   }
+  function syncLabels() {
+    magMinVal.textContent = fmtMag(magMin.value);
+    magMaxVal.textContent = fmtMag(magMax.value);
+    depthMinVal.textContent = depthMin.value;
+    depthMaxVal.textContent = depthMax.value + (autoDepthMax.checked ? " (auto)" : "");
+    yearStartVal.textContent = yearStart.value;
+    yearEndVal.textContent = yearEnd.value;
+  }
+  function applyAutoDepthMaxUI() {
+    if (autoDepthMax.checked) {
+      depthMax.value = dDomMax;         // bind to data max
+      depthMax.setAttribute("disabled", "disabled");
+      depthMaxCtrl.classList.add("disabled");
+    } else {
+      depthMax.removeAttribute("disabled");
+      depthMaxCtrl.classList.remove("disabled");
+    }
+  }
 
+  // Render
   function render() {
-    // Keep pairs valid & sync labels
+    // enforce ranges
     clampPair(magMin, magMax, ""); clampPair(depthMin, depthMax, ""); clampPair(yearStart, yearEnd, "");
-    syncLabel(magMin, magMinVal, fmtMag); syncLabel(magMax, magMaxVal, fmtMag);
-    syncLabel(depthMin, depthMinVal); syncLabel(depthMax, depthMaxVal);
-    syncLabel(yearStart, yearStartVal); syncLabel(yearEnd, yearEndVal);
+    // auto depth max behavior
+    if (autoDepthMax.checked) depthMax.value = dDomMax;
+    syncLabels();
 
     const m0 = +magMin.value, m1 = +magMax.value;
     const d0 = +depthMin.value, d1 = +depthMax.value;
     const y0 = +yearStart.value, y1 = +yearEnd.value;
+    const allowNA = includeNA.checked;
 
-    const filtered = points.filter(d =>
-      (d.mag != null && d.mag >= m0 && d.mag <= m1) &&
-      (d.depth == null || (d.depth >= d0 && d.depth <= d1)) &&   // depth filter applies to known depths; N/A always allowed
-      (d.year != null && d.year >= y0 && d.year <= y1)
-    );
+    const filtered = points.filter(d => {
+      const magOK = (d.mag != null && d.mag >= m0 && d.mag <= m1);
+      const yearOK = (d.year != null && d.year >= y0 && d.year <= y1);
+      const depthOK = d.depth == null ? allowNA : (d.depth >= d0 && d.depth <= d1);
+      return magOK && yearOK && depthOK;
+    });
 
     const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i) => d.time + "|" + i);
 
@@ -215,9 +253,9 @@
           .style("top", (y - 12) + "px")
           .style("opacity", 1)
           .html(`
-            <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
+            <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:${getCSSVar('--muted')}">${d.place || d.region || "Location"}</span></div>
             <div>Depth: <b>${d.depth == null ? "N/A" : Math.round(d.depth) + " km"}</b></div>
-            <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
+            <div style="color:${getCSSVar('--muted')}">${d.time ? new Date(d.time).toUTCString() : ""}</div>
           `);
       })
       .on("mouseleave", () => tooltip.style("opacity", 0));
@@ -270,7 +308,7 @@
       const tx = x0 + pad + (barW * i/(ticks.length-1));
       legendG.append("text").attr("x", tx).attr("y", tickY)
         .attr("text-anchor", i===0 ? "start" : (i===ticks.length-1 ? "end" : "middle"))
-        .attr("fill", getVar("--muted")).attr("font-size", 11).text(t);
+        .attr("fill", getCSSVar('--muted')).attr("font-size", 11).text(t);
     });
 
     // Magnitude size legend
@@ -287,13 +325,13 @@
         .attr("r", r).attr("fill", "#e6e6e6").attr("fill-opacity", .9)
         .attr("stroke", "#000").attr("stroke-opacity", .4);
       legendG.append("text").attr("x", cx).attr("y", baseY + 26 + r + 12)
-        .attr("text-anchor","middle").attr("fill", getVar("--muted")).attr("font-size", 11).text(m);
+        .attr("text-anchor","middle").attr("fill", getCSSVar('--muted')).attr("font-size", 11).text(m);
     });
-
-    function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name) || '#9fb0c6'; }
   }
 
   drawLegend();
+  applyAutoDepthMaxUI();
+  syncLabels();
   render();
 
   // Zoom (legend fixed)
@@ -306,9 +344,9 @@
     }
   });
 
-  // Event listeners (keep pairs in order then render)
+  // Event listeners
   function pairHandler(minEl, maxEl, which){
-    return () => { if (+minEl.value > +maxEl.value) { if (which==="min") maxEl.value = minEl.value; else minEl.value = maxEl.value; } render(); };
+    return () => { clampPair(minEl, maxEl, which); render(); };
   }
   magMin.addEventListener("input", pairHandler(magMin, magMax, "min"));
   magMax.addEventListener("input", pairHandler(magMin, magMax, "max"));
@@ -316,6 +354,9 @@
   depthMax.addEventListener("input", pairHandler(depthMin, depthMax, "max"));
   yearStart.addEventListener("input", pairHandler(yearStart, yearEnd, "min"));
   yearEnd.addEventListener("input", pairHandler(yearStart, yearEnd, "max"));
+
+  autoDepthMax.addEventListener("change", () => { applyAutoDepthMaxUI(); render(); });
+  includeNA.addEventListener("change", () => { render(); });
 })();
 </script>
 </body>
