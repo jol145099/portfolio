@@ -125,7 +125,9 @@
     const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height) * 1.25);
     const path = d3.geoPath(projection);
 
-    const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]); // deeper => cooler color end
+    // Color scale: depth (km). Domain reversed so deep (700) at left of legend.
+    const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]);
+    // Size scale: magnitude
     const r = d3.scaleSqrt().domain([4.5, 8]).range([1.5, 12]);
 
     // ====== Load data ======
@@ -147,14 +149,13 @@
       })
     ]);
 
-    // Filter to plausible US bounding box (includes Alaska, Hawaii, offshore)
     let data = rows.filter(d => isFinite(d.lat) && isFinite(d.lon) && isFinite(d.mag) && d.mag >= 4.5);
 
-    // Compute extents
+    // Extents for controls
     const yearExtent = d3.extent(data, d => d.year).map(v => v ?? 1900);
     const depthExtent = d3.extent(data, d => d.depth).map(v => v ?? 0);
 
-    // Init controls with data-driven bounds
+    // Controls
     const yearMinEl = document.getElementById('year-min');
     const yearMaxEl = document.getElementById('year-max');
     const yearLabel = document.getElementById('year-range-label');
@@ -187,14 +188,14 @@
     }
     syncLabels();
 
-    // ====== Base map ======
+    // ====== Basemap ======
     const states = topojson.feature(usTopo, usTopo.objects.states);
     const mesh = topojson.mesh(usTopo, usTopo.objects.states, (a,b) => a!==b);
 
     g.append('path').attr('class','states').attr('d', path(states));
     g.append('path').attr('class','state-borders').attr('d', path(mesh));
 
-    // ====== Quakes layer ======
+    // ====== Quake layer ======
     const quakeLayer = g.append('g').attr('class','quakes');
 
     function update(){
@@ -209,16 +210,13 @@
         const withinDepth = (d.depth==null) ? (d0<=0 && d1>=700) : (d.depth>=d0 && d.depth<=d1);
         const withinText = q==='' || d.place.toLowerCase().includes(q) || d.region.toLowerCase().includes(q);
         const projected = projection([d.lon, d.lat]);
-        return withinYear && withinMag && withinDepth && withinText && projected; // skip points not projectable
+        return withinYear && withinMag && withinDepth && withinText && projected;
       });
 
-      // DATA JOIN
       const sel = quakeLayer.selectAll('circle.quake').data(filtered, d => `${d.time?.toISOString?.()||''}-${d.lat}-${d.lon}-${d.mag}`);
 
-      // EXIT
       sel.exit().transition().duration(150).attr('r', 0).remove();
 
-      // UPDATE + ENTER
       sel.join(
         enter => enter.append('circle')
           .attr('class','quake')
@@ -275,32 +273,39 @@
     });
     svg.call(zoom);
 
-    // ====== Legends ======
+    // ====== Legends (improved gradient) ======
     buildLegends();
     function buildLegends(){
       const container = d3.select('#legend');
       container.html('');
       container.append('h3').text('Legend');
-      const colorSvg = container.append('svg').attr('width', 200).attr('height', 36);
+
+      // Depth gradient legend with more color stops
+      const colorSvg = container.append('svg').attr('width', 220).attr('height', 54);
       const gradId = 'grad-depth';
       const defs = colorSvg.append('defs');
       const grad = defs.append('linearGradient').attr('id', gradId);
       grad.selectAll('stop')
-        .data(d3.ticks(0,1,10))
+        .data(d3.range(0, 1.0001, 0.02)) // many stops for smooth gradient
         .join('stop')
         .attr('offset', d => (d*100)+'%')
         .attr('stop-color', d => color(d*700));
-      colorSvg.append('rect').attr('x',10).attr('y',8).attr('width',160).attr('height',12).attr('fill', `url(#${gradId})`).attr('stroke','#1e2a36');
-      colorSvg.append('text').attr('x',10).attr('y',30).attr('fill','#b7c0c9').attr('font-size','.8rem').text('700 km');
-      colorSvg.append('text').attr('x',170).attr('y',30).attr('fill','#b7c0c9').attr('font-size','.8rem').attr('text-anchor','end').text('0 km');
 
-      const sizeSvg = container.append('svg').attr('width', 200).attr('height', 60);
+      colorSvg.append('rect')
+        .attr('x',10).attr('y',12).attr('width',180).attr('height',14)
+        .attr('fill', `url(#${gradId})`).attr('stroke','#1e2a36');
+
+      colorSvg.append('text').attr('x',10).attr('y',42).attr('fill','#b7c0c9').attr('font-size','.8rem').text('700 km (deep)');
+      colorSvg.append('text').attr('x',190).attr('y',42).attr('fill','#b7c0c9').attr('font-size','.8rem').attr('text-anchor','end').text('0 km (shallow)');
+
+      // Magnitude size legend
+      const sizeSvg = container.append('svg').attr('width', 220).attr('height', 66);
       const mags = [5, 6.5, 8];
       sizeSvg.selectAll('circle').data(mags).join('circle')
-        .attr('cx', (d,i)=> 30 + i*60).attr('cy', 28)
+        .attr('cx', (d,i)=> 30 + i*70).attr('cy', 28)
         .attr('r', d => r(d)).attr('fill', '#5aa9e6').attr('class','quake');
       sizeSvg.selectAll('text').data(mags).join('text')
-        .attr('x', (d,i)=> 30 + i*60).attr('y', 55).attr('fill','#b7c0c9')
+        .attr('x', (d,i)=> 30 + i*70).attr('y', 58).attr('fill','#b7c0c9')
         .attr('font-size','.8rem').attr('text-anchor','middle').text(d => 'M ' + d);
     }
 
