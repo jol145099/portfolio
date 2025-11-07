@@ -3,61 +3,70 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes (M≥4.5) — One-Page with Year Range</title>
+<title>D3 US Earthquakes (M≥4.5) — Ranged Filters</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
-  :root {
-    --bg: #0b0e14; --text: #e8eef7; --muted: #9fb0c6; --grid: #243142; --accent: #9ad1ff;
-  }
+  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#9ad1ff; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; height: 100vh; overflow: hidden; }
-  header { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; overflow: hidden; }
-  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  header .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden; }
+  header { height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .sub { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
   .topbar {
-    position: absolute; top: 52px; left: 8px; right: 8px;
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-    background: rgba(15,20,28,.9); border: 1px solid var(--grid); border-radius: 10px;
-    padding: 8px 10px; z-index: 2; backdrop-filter: blur(2px);
+    position:absolute; top:52px; left:8px; right:8px;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    background:rgba(15,20,28,.9); border:1px solid var(--grid); border-radius:10px;
+    padding:8px 10px; z-index:2; backdrop-filter:blur(2px);
   }
-  .ctrl { display: grid; grid-template-columns: auto 64px; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
-  .ctrl input[type="range"] { grid-column: 1 / -1; width: 220px; }
-  .fill { flex: 1 1 auto; }
-  .view { position: absolute; inset: 48px 0 0 0; }
-  svg { width: 100%; height: 100%; display: block; }
-  .states { fill: #0d1320; stroke: #2a3a52; stroke-width: .6; }
-  .state-borders { fill: none; stroke: #2a3a52; stroke-width: .6; pointer-events: none; }
-  .quake { stroke: #000; stroke-opacity: .45; }
-  .nodata { fill: #9aa0a6 !important; opacity: .9; }
-  .hud { font-size: 11px; color: var(--muted); }
-  .legend-card { fill: rgba(10,14,20,.9); stroke: var(--grid); stroke-width: 1; filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx: 10; ry: 10; }
-  .legend-title { fill: var(--accent); font-weight: 600; font-size: 12px; }
+  .ctrl { display:grid; grid-template-columns:auto 64px; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
+  .ctrl input[type="range"] { grid-column:1 / -1; width:220px; }
+  .ctrl .inline { display:flex; gap:6px; align-items:center; }
+  .fill { flex:1 1 auto; }
+  .view { position:absolute; inset:48px 0 0 0; }
+  svg { width:100%; height:100%; display:block; }
+  .states { fill:#0d1320; stroke:#2a3a52; stroke-width:.6; }
+  .state-borders { fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none; }
+  .quake { stroke:#000; stroke-opacity:.45; }
+  .nodata { fill:#9aa0a6 !important; opacity:.9; }
+  .hud { font-size:11px; color:var(--muted); }
+  .legend-card { fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10; }
+  .legend-title { fill:var(--accent); font-weight:600; font-size:12px; }
   .tooltip {
-    position: absolute; pointer-events: none; opacity: 0; background: #0d1320; color: var(--text);
-    border: 1px solid var(--grid); padding: 8px 10px; font-size: 12px; border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.25); transform: translate(-50%, -120%);
+    position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:var(--text);
+    border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%, -120%);
   }
 </style>
 </head>
 <body>
   <header>
-    <h1>US Earthquakes (M≥4.5)</h1>
-    <div class="sub">Size = magnitude, color = depth (km). Pan/zoom, hover, filter by magnitude, depth, and year range.</div>
+    <h1>US Earthquakes — Ranged Filters</h1>
+    <div class="sub">Size = magnitude, color = depth (km). Pan/zoom, hover, filter by magnitude, depth, and year ranges.</div>
   </header>
 
-  <!-- compact controls (magnitude, depth, year range) -->
   <div class="topbar">
+    <!-- Magnitude range -->
     <div class="ctrl">
-      <span>Min magnitude</span><span id="magVal">4.5</span>
+      <span>Magnitude min</span><span id="magMinVal">—</span>
       <input id="magMin" type="range" min="4.5" max="9" step="0.1" value="4.5" />
     </div>
     <div class="ctrl">
-      <span>Max depth (km)</span><span id="depthVal">700</span>
+      <span>Magnitude max</span><span id="magMaxVal">—</span>
+      <input id="magMax" type="range" min="4.5" max="9" step="0.1" value="9" />
+    </div>
+
+    <!-- Depth range -->
+    <div class="ctrl">
+      <span>Depth min (km)</span><span id="depthMinVal">—</span>
+      <input id="depthMin" type="range" min="0" max="700" step="10" value="0" />
+    </div>
+    <div class="ctrl">
+      <span>Depth max (km)</span><span id="depthMaxVal">—</span>
       <input id="depthMax" type="range" min="0" max="700" step="10" value="700" />
     </div>
 
-    <!-- Year range: Start & End sliders (both draggable) -->
+    <!-- Year range -->
     <div class="ctrl">
       <span>Year start</span><span id="yearStartVal">—</span>
       <input id="yearStart" type="range" min="1900" max="2025" step="1" value="1900" />
@@ -79,11 +88,11 @@
 <script>
 (async function () {
   const svg = d3.select("#svg");
-  // Only this layer will zoom
+  // Zoomed layer
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
   const ptsG = zoomLayer.append("g");
-  // Legend layer fixed
+  // Fixed legend
   const legendG = svg.append("g");
   const tooltip = d3.select("#tooltip");
 
@@ -95,7 +104,7 @@
   let { width, height } = sizeSVG();
   window.addEventListener("resize", () => {
     ({ width, height } = sizeSVG());
-    drawLegend(); render(); // reposition legend & re-render points
+    drawLegend(); render();
   });
 
   // Projection & path
@@ -106,90 +115,93 @@
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r => r.json());
   const states = topojson.feature(us, us.objects.states);
   const borders = topojson.mesh(us, us.objects.states, (a,b) => a !== b);
-  mapG.append("path").datum(states).attr("class", "states").attr("d", path);
-  mapG.append("path").datum(borders).attr("class", "state-borders").attr("d", path);
+  mapG.append("path").datum(states).attr("class","states").attr("d", path);
+  mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // Data with year parsed
+  // Data (parse year)
   const data = await d3.csv("us_earthquakes_m4.5.csv", d => {
     const depth = d.depth === "" || d.depth == null ? null : +d.depth;
     const mag = d.mag === "" || d.mag == null ? null : +d.mag;
     const lat = +d.latitude, lon = +d.longitude;
     const year = d.time ? new Date(d.time).getUTCFullYear() : null;
-    return { time: d.time, year, place: d.place || "", region: d.region || "", depth, mag, lat, lon };
+    return { time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon };
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Scales
+  // Scales & domains
   const depthVals = points.map(d => d.depth).filter(v => v != null && isFinite(v));
-  const depthDomain = d3.extent(depthVals.length ? depthVals : [0,700]);
-  const depthMin = Math.max(0, Math.floor((depthDomain[0] ?? 0)));
-  const depthMaxDom = Math.min(700, Math.ceil((depthDomain[1] ?? 700)));
-  const color = d3.scaleSequential([depthMin, depthMaxDom], d3.interpolateTurbo);
+  const depthDom = d3.extent(depthVals.length ? depthVals : [0,700]);
+  const dDomMin = Math.max(0, Math.floor((depthDom[0] ?? 0)));
+  const dDomMax = Math.min(700, Math.ceil((depthDom[1] ?? 700)));
+  const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
 
   const magVals = points.map(d => d.mag).filter(v => v != null && isFinite(v));
-  const magDomain = d3.extent(magVals.length ? magVals : [4.5,8]);
-  const size = d3.scaleSqrt().domain(magDomain).range([1.8, 11]);
+  const magDom = d3.extent(magVals.length ? magVals : [4.5,8]);
+  const size = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
 
-  // Year domain from data
   const yearVals = points.map(d => d.year).filter(y => y != null && isFinite(y));
-  const yearDomain = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
-  const yearMinDom = yearDomain[0], yearMaxDom = yearDomain[1];
+  const yearDom = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
   // Controls
-  const magMinInput = document.getElementById("magMin");
-  const depthMaxInput = document.getElementById("depthMax");
-  const magVal = document.getElementById("magVal");
-  const depthVal = document.getElementById("depthVal");
-  magMinInput.min = Math.max(3.5, Math.floor((magDomain[0] ?? 4.5) * 10) / 10);
-  magMinInput.max = Math.ceil((magDomain[1] ?? 9) * 10) / 10;
-  magMinInput.value = Math.max(4.5, magMinInput.min);
-  magVal.textContent = magMinInput.value;
-
-  depthMaxInput.min = 0; depthMaxInput.max = 700; depthMaxInput.value = depthMaxDom;
-  depthVal.textContent = depthMaxInput.value;
-
-  // Year sliders (start & end)
+  const magMin = document.getElementById("magMin");
+  const magMax = document.getElementById("magMax");
+  const depthMin = document.getElementById("depthMin");
+  const depthMax = document.getElementById("depthMax");
   const yearStart = document.getElementById("yearStart");
   const yearEnd = document.getElementById("yearEnd");
+
+  const magMinVal = document.getElementById("magMinVal");
+  const magMaxVal = document.getElementById("magMaxVal");
+  const depthMinVal = document.getElementById("depthMinVal");
+  const depthMaxVal = document.getElementById("depthMaxVal");
   const yearStartVal = document.getElementById("yearStartVal");
   const yearEndVal = document.getElementById("yearEndVal");
 
-  yearStart.min = yearMinDom; yearStart.max = yearMaxDom; yearStart.value = yearMinDom;
-  yearEnd.min = yearMinDom; yearEnd.max = yearMaxDom; yearEnd.value = yearMaxDom;
-  yearStartVal.textContent = yearStart.value;
-  yearEndVal.textContent = yearEnd.value;
+  // Initialize ranges from data domains
+  magMin.min = Math.max(3.5, Math.floor((magDom[0] ?? 4.5) * 10) / 10);
+  magMin.max = Math.ceil((magDom[1] ?? 9) * 10) / 10;
+  magMax.min = magMin.min; magMax.max = magMin.max;
+  magMin.value = magMin.min; magMax.value = magMax.max;
 
-  // Ensure start <= end and keep labels in sync
-  function syncYearRange(fromInput) {
-    if (+yearStart.value > +yearEnd.value) {
-      if (fromInput === "start") yearEnd.value = yearStart.value;
-      else yearStart.value = yearEnd.value;
+  depthMin.min = 0; depthMin.max = 700;
+  depthMax.min = 0; depthMax.max = 700;
+  depthMin.value = dDomMin; depthMax.value = dDomMax;
+
+  yearStart.min = yearDom[0]; yearStart.max = yearDom[1]; yearStart.value = yearDom[0];
+  yearEnd.min = yearDom[0]; yearEnd.max = yearDom[1]; yearEnd.value = yearDom[1];
+
+  // Label sync helpers
+  function syncLabel(el, span, fmt=(v)=>v){ span.textContent = fmt(el.value); }
+  const fmtMag = v => (+v).toFixed(1);
+
+  function clampPair(minEl, maxEl, source) {
+    if (+minEl.value > +maxEl.value) {
+      if (source === "min") maxEl.value = minEl.value; else minEl.value = maxEl.value;
     }
-    yearStartVal.textContent = yearStart.value;
-    yearEndVal.textContent = yearEnd.value;
   }
 
-  // Render
   function render() {
-    const magCut = +magMinInput.value;
-    const dMax = +depthMaxInput.value;
-    magVal.textContent = magCut.toFixed(1);
-    depthVal.textContent = dMax;
+    // Keep pairs valid & sync labels
+    clampPair(magMin, magMax, ""); clampPair(depthMin, depthMax, ""); clampPair(yearStart, yearEnd, "");
+    syncLabel(magMin, magMinVal, fmtMag); syncLabel(magMax, magMaxVal, fmtMag);
+    syncLabel(depthMin, depthMinVal); syncLabel(depthMax, depthMaxVal);
+    syncLabel(yearStart, yearStartVal); syncLabel(yearEnd, yearEndVal);
 
-    const y0 = +yearStart.value;
-    const y1 = +yearEnd.value;
+    const m0 = +magMin.value, m1 = +magMax.value;
+    const d0 = +depthMin.value, d1 = +depthMax.value;
+    const y0 = +yearStart.value, y1 = +yearEnd.value;
 
     const filtered = points.filter(d =>
-      (d.mag != null && d.mag >= magCut) &&
-      (d.depth == null || d.depth <= dMax) &&
-      (d.year == null ? false : (d.year >= y0 && d.year <= y1))
+      (d.mag != null && d.mag >= m0 && d.mag <= m1) &&
+      (d.depth == null || (d.depth >= d0 && d.depth <= d1)) &&   // depth filter applies to known depths; N/A always allowed
+      (d.year != null && d.year >= y0 && d.year <= y1)
     );
 
     const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i) => d.time + "|" + i);
 
     sel.enter().append("circle")
       .attr("class", d => "quake" + (d.depth == null ? " nodata" : ""))
-      .attr("r", d => size(d.mag ?? magDomain[0]))
+      .attr("r", d => size(d.mag ?? magDom[0]))
       .attr("transform", d => {
         const p = projection([d.lon, d.lat]);
         return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
@@ -211,7 +223,7 @@
       .on("mouseleave", () => tooltip.style("opacity", 0));
 
     sel
-      .attr("r", d => size(d.mag ?? magDomain[0]))
+      .attr("r", d => size(d.mag ?? magDom[0]))
       .attr("fill", d => d.depth == null ? "#9aa0a6" : color(d.depth))
       .attr("class", d => "quake" + (d.depth == null ? " nodata" : ""))
       .attr("transform", d => {
@@ -222,14 +234,12 @@
     sel.exit().remove();
   }
 
-  // Legend (fixed layer)
+  // Legend (fixed)
   function drawLegend() {
     legendG.selectAll("*").remove();
-
     const pad = 10;
     const cardW = Math.min(260, Math.max(220, width * 0.22));
     const cardH = 110;
-
     const x0 = width - cardW - 12;
     const y0 = height - cardH - 12;
 
@@ -248,23 +258,23 @@
     const stops = 12;
     for (let i=0;i<=stops;i++){
       const t = i/stops;
-      const val = depthMin + t*(depthMaxDom-depthMin);
+      const val = dDomMin + t*(dDomMax - dDomMin);
       grad.append("stop").attr("offset", `${t*100}%`).attr("stop-color", color(val));
     }
     legendG.append("rect")
       .attr("x", x0 + pad).attr("y", y0 + 26).attr("width", barW).attr("height", barH)
       .attr("rx", 6).attr("ry", 6).attr("fill", `url(#${gradId})`).attr("stroke", "#243142");
     const tickY = y0 + 26 + barH + 12;
-    const ticks = [depthMin, Math.round((depthMin+depthMaxDom)/2), depthMaxDom];
+    const ticks = [dDomMin, Math.round((dDomMin+dDomMax)/2), dDomMax];
     ticks.forEach((t,i) => {
       const tx = x0 + pad + (barW * i/(ticks.length-1));
       legendG.append("text").attr("x", tx).attr("y", tickY)
         .attr("text-anchor", i===0 ? "start" : (i===ticks.length-1 ? "end" : "middle"))
-        .attr("fill", varMuted()).attr("font-size", 11).text(t);
+        .attr("fill", getVar("--muted")).attr("font-size", 11).text(t);
     });
 
     // Magnitude size legend
-    const mags = [magDomain[0], (magDomain[0]+magDomain[1])/2, magDomain[1]].map(v => +v.toFixed(1));
+    const mags = [magDom[0], (magDom[0]+magDom[1])/2, magDom[1]].map(v => +v.toFixed(1));
     const baseY = tickY + 8;
     legendG.append("text").attr("class","legend-title")
       .attr("x", x0 + pad).attr("y", baseY + 16).text("Magnitude");
@@ -277,16 +287,16 @@
         .attr("r", r).attr("fill", "#e6e6e6").attr("fill-opacity", .9)
         .attr("stroke", "#000").attr("stroke-opacity", .4);
       legendG.append("text").attr("x", cx).attr("y", baseY + 26 + r + 12)
-        .attr("text-anchor","middle").attr("fill", varMuted()).attr("font-size", 11).text(m);
+        .attr("text-anchor","middle").attr("fill", getVar("--muted")).attr("font-size", 11).text(m);
     });
 
-    function varMuted(){ return getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9fb0c6'; }
+    function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name) || '#9fb0c6'; }
   }
 
   drawLegend();
   render();
 
-  // Zoom (legend stays fixed)
+  // Zoom (legend fixed)
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (event) => {
     zoomLayer.attr("transform", event.transform);
   });
@@ -296,11 +306,16 @@
     }
   });
 
-  // Event listeners
-  magMinInput.addEventListener("input", render);
-  depthMaxInput.addEventListener("input", render);
-  yearStart.addEventListener("input", () => { syncYearRange("start"); render(); });
-  yearEnd.addEventListener("input", () => { syncYearRange("end"); render(); });
+  // Event listeners (keep pairs in order then render)
+  function pairHandler(minEl, maxEl, which){
+    return () => { if (+minEl.value > +maxEl.value) { if (which==="min") maxEl.value = minEl.value; else minEl.value = maxEl.value; } render(); };
+  }
+  magMin.addEventListener("input", pairHandler(magMin, magMax, "min"));
+  magMax.addEventListener("input", pairHandler(magMin, magMax, "max"));
+  depthMin.addEventListener("input", pairHandler(depthMin, depthMax, "min"));
+  depthMax.addEventListener("input", pairHandler(depthMin, depthMax, "max"));
+  yearStart.addEventListener("input", pairHandler(yearStart, yearEnd, "min"));
+  yearEnd.addEventListener("input", pairHandler(yearStart, yearEnd, "max"));
 })();
 </script>
 </body>
