@@ -3,57 +3,50 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>US Earthquakes (M≥4.5) — Old Style + Draggable Year Range</title>
+<title>D3 US Earthquakes (M≥4.5) — One-Page with Year Range</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
-  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --panel:#0f141c; --accent:#9ad1ff; }
+  :root {
+    --bg: #0b0e14; --text: #e8eef7; --muted: #9fb0c6; --grid: #243142; --accent: #9ad1ff;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; height:100vh; overflow:hidden; }
-  header { height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden; }
-  header h1 { font-size:16px; margin:0; font-weight:600; }
-  header .sub { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; }
-  .topbar{
-    position:absolute; top:52px; left:8px; right:8px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;
-    background:rgba(15,20,28,.9); border:1px solid var(--grid); border-radius:10px; padding:8px 10px; z-index:2; backdrop-filter: blur(2px);
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; height: 100vh; overflow: hidden; }
+  header { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; overflow: hidden; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .topbar {
+    position: absolute; top: 52px; left: 8px; right: 8px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    background: rgba(15,20,28,.9); border: 1px solid var(--grid); border-radius: 10px;
+    padding: 8px 10px; z-index: 2; backdrop-filter: blur(2px);
   }
-  .ctrl{ display:grid; grid-template-columns:auto 64px; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
-  .ctrl input[type="range"]{ grid-column:1 / -1; width:220px; }
-  .year-ctrl{ display:grid; grid-template-columns:auto auto; align-items:center; gap:8px; }
-  .year-ctrl .label{ color:var(--muted); font-size:12px; }
-  .year-ctrl .value{ font-size:12px; min-width:100px; text-align:right; color:var(--text); }
-  /* Make the year control look like the old sliders */
-  .year-wrap{ width:360px; height:36px; border:1px solid var(--grid); border-radius:8px; background:rgba(10,14,20,.9); padding:6px 8px; }
-  .fill{ flex:1 1 auto; }
-  .view{ position:absolute; inset:48px 0 0 0; }
-  svg#main{ width:100%; height:100%; display:block; }
-
-  .states { fill:#0d1320; stroke:#2a3a52; stroke-width:.6; }
-  .state-borders { fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none; }
-  .quake { stroke:#000; stroke-opacity:.45; }
-  .nodata { fill:#9aa0a6 !important; opacity:.9; }
-  .hud{ font-size:11px; color:var(--muted); }
-
-  .legend-card{ fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10; }
-  .legend-title{ fill:var(--accent); font-weight:600; font-size:12px; }
-
-  .tooltip{ position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:var(--text);
-    border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%,-120%);
+  .ctrl { display: grid; grid-template-columns: auto 64px; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .ctrl input[type="range"] { grid-column: 1 / -1; width: 220px; }
+  .fill { flex: 1 1 auto; }
+  .view { position: absolute; inset: 48px 0 0 0; }
+  svg { width: 100%; height: 100%; display: block; }
+  .states { fill: #0d1320; stroke: #2a3a52; stroke-width: .6; }
+  .state-borders { fill: none; stroke: #2a3a52; stroke-width: .6; pointer-events: none; }
+  .quake { stroke: #000; stroke-opacity: .45; }
+  .nodata { fill: #9aa0a6 !important; opacity: .9; }
+  .hud { font-size: 11px; color: var(--muted); }
+  .legend-card { fill: rgba(10,14,20,.9); stroke: var(--grid); stroke-width: 1; filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx: 10; ry: 10; }
+  .legend-title { fill: var(--accent); font-weight: 600; font-size: 12px; }
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0; background: #0d1320; color: var(--text);
+    border: 1px solid var(--grid); padding: 8px 10px; font-size: 12px; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); transform: translate(-50%, -120%);
   }
-
-  /* Year brush, styled like a slider */
-  .year-brush .selection { fill:#9ad1ff33; stroke:#9ad1ff; }
-  .year-brush .handle { fill:#9ad1ff; cursor:ew-resize; }
-  .year-axis path, .year-axis line { stroke:#2a3a52; }
-  .year-axis text { fill:var(--muted); font-size:11px; }
 </style>
 </head>
 <body>
   <header>
     <h1>US Earthquakes (M≥4.5)</h1>
-    <div class="sub">Size = magnitude, color = depth (km). Pan/zoom, hover, filter by magnitude, depth, and year. (Legend stays fixed)</div>
+    <div class="sub">Size = magnitude, color = depth (km). Pan/zoom, hover, filter by magnitude, depth, and year range.</div>
   </header>
 
+  <!-- compact controls (magnitude, depth, year range) -->
   <div class="topbar">
     <div class="ctrl">
       <span>Min magnitude</span><span id="magVal">4.5</span>
@@ -64,13 +57,14 @@
       <input id="depthMax" type="range" min="0" max="700" step="10" value="700" />
     </div>
 
-    <!-- Year: single dual-handle control, styled like the old sliders -->
-    <div class="year-ctrl">
-      <div class="label">Year</div>
-      <div class="value" id="yearRangeVal">—</div>
-      <div class="year-wrap">
-        <svg id="yearSlider" width="100%" height="100%" viewBox="0 0 360 36" preserveAspectRatio="xMidYMid meet"></svg>
-      </div>
+    <!-- Year range: Start & End sliders (both draggable) -->
+    <div class="ctrl">
+      <span>Year start</span><span id="yearStartVal">—</span>
+      <input id="yearStart" type="range" min="1900" max="2025" step="1" value="1900" />
+    </div>
+    <div class="ctrl">
+      <span>Year end</span><span id="yearEndVal">—</span>
+      <input id="yearEnd" type="range" min="1900" max="2025" step="1" value="2025" />
     </div>
 
     <div class="fill"></div>
@@ -78,159 +72,120 @@
   </div>
 
   <div class="view">
-    <svg id="main" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="tooltip" id="tooltip"></div>
   </div>
 
 <script>
 (async function () {
-  // ----- Base layers -----
-  const svg = d3.select("#main");
-  const zoomLayer = svg.append("g");     // zooms
+  const svg = d3.select("#svg");
+  // Only this layer will zoom
+  const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
   const ptsG = zoomLayer.append("g");
-  const legendG = svg.append("g");       // fixed
+  // Legend layer fixed
+  const legendG = svg.append("g");
   const tooltip = d3.select("#tooltip");
 
-  function sizeMain(){
+  function sizeSVG() {
     const rect = document.querySelector(".view").getBoundingClientRect();
-    svg.attr("viewBox",[0,0,rect.width,rect.height]);
-    return { width:rect.width, height:rect.height };
+    svg.attr("viewBox", [0, 0, rect.width, rect.height]);
+    return { width: rect.width, height: rect.height };
   }
-  let { width, height } = sizeMain();
+  let { width, height } = sizeSVG();
   window.addEventListener("resize", () => {
-    ({ width, height } = sizeMain());
-    drawLegend(); render(); resizeYearSlider();
+    ({ width, height } = sizeSVG());
+    drawLegend(); render(); // reposition legend & re-render points
   });
 
-  // ----- Map -----
-  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height)*1.2);
+  // Projection & path
+  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height) * 1.2);
   const path = d3.geoPath(projection);
-  const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
-  const states = topojson.feature(us, us.objects.states);
-  const borders = topojson.mesh(us, us.objects.states, (a,b)=>a!==b);
-  mapG.append("path").datum(states).attr("class","states").attr("d", path);
-  mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // ----- Data -----
+  // Map
+  const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r => r.json());
+  const states = topojson.feature(us, us.objects.states);
+  const borders = topojson.mesh(us, us.objects.states, (a,b) => a !== b);
+  mapG.append("path").datum(states).attr("class", "states").attr("d", path);
+  mapG.append("path").datum(borders).attr("class", "state-borders").attr("d", path);
+
+  // Data with year parsed
   const data = await d3.csv("us_earthquakes_m4.5.csv", d => {
-    const depth = d.depth===""||d.depth==null ? null : +d.depth;
-    const mag   = d.mag===""||d.mag==null ? null : +d.mag;
-    const lat   = +d.latitude, lon=+d.longitude;
-    const year  = d.time ? new Date(d.time).getUTCFullYear() : null;
-    return { time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon };
+    const depth = d.depth === "" || d.depth == null ? null : +d.depth;
+    const mag = d.mag === "" || d.mag == null ? null : +d.mag;
+    const lat = +d.latitude, lon = +d.longitude;
+    const year = d.time ? new Date(d.time).getUTCFullYear() : null;
+    return { time: d.time, year, place: d.place || "", region: d.region || "", depth, mag, lat, lon };
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // ----- Scales -----
-  const depthVals = points.map(d=>d.depth).filter(v=>v!=null&&isFinite(v));
-  const depthDomain = d3.extent(depthVals.length?depthVals:[0,700]);
+  // Scales
+  const depthVals = points.map(d => d.depth).filter(v => v != null && isFinite(v));
+  const depthDomain = d3.extent(depthVals.length ? depthVals : [0,700]);
   const depthMin = Math.max(0, Math.floor((depthDomain[0] ?? 0)));
   const depthMaxDom = Math.min(700, Math.ceil((depthDomain[1] ?? 700)));
   const color = d3.scaleSequential([depthMin, depthMaxDom], d3.interpolateTurbo);
 
-  const magVals = points.map(d=>d.mag).filter(v=>v!=null&&isFinite(v));
-  const magDomain = d3.extent(magVals.length?magVals:[4.5,8]);
+  const magVals = points.map(d => d.mag).filter(v => v != null && isFinite(v));
+  const magDomain = d3.extent(magVals.length ? magVals : [4.5,8]);
   const size = d3.scaleSqrt().domain(magDomain).range([1.8, 11]);
 
-  const yearVals = points.map(d=>d.year).filter(y=>y!=null&&isFinite(y));
-  const yearDomain = d3.extent(yearVals.length?yearVals:[1950,2025]);
-  let yearStartSel = yearDomain[0];
-  let yearEndSel   = yearDomain[1];
+  // Year domain from data
+  const yearVals = points.map(d => d.year).filter(y => y != null && isFinite(y));
+  const yearDomain = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
+  const yearMinDom = yearDomain[0], yearMaxDom = yearDomain[1];
 
-  // ----- Controls (mag/depth) -----
+  // Controls
   const magMinInput = document.getElementById("magMin");
   const depthMaxInput = document.getElementById("depthMax");
   const magVal = document.getElementById("magVal");
   const depthVal = document.getElementById("depthVal");
-
-  magMinInput.min = Math.max(3.5, Math.floor((magDomain[0] ?? 4.5)*10)/10);
-  magMinInput.max = Math.ceil((magDomain[1] ?? 9)*10)/10;
+  magMinInput.min = Math.max(3.5, Math.floor((magDomain[0] ?? 4.5) * 10) / 10);
+  magMinInput.max = Math.ceil((magDomain[1] ?? 9) * 10) / 10;
   magMinInput.value = Math.max(4.5, magMinInput.min);
   magVal.textContent = magMinInput.value;
 
   depthMaxInput.min = 0; depthMaxInput.max = 700; depthMaxInput.value = depthMaxDom;
   depthVal.textContent = depthMaxInput.value;
 
-  magMinInput.addEventListener("input", ()=>{ magVal.textContent=(+magMinInput.value).toFixed(1); render(); });
-  depthMaxInput.addEventListener("input", ()=>{ depthVal.textContent=+depthMaxInput.value; render(); });
+  // Year sliders (start & end)
+  const yearStart = document.getElementById("yearStart");
+  const yearEnd = document.getElementById("yearEnd");
+  const yearStartVal = document.getElementById("yearStartVal");
+  const yearEndVal = document.getElementById("yearEndVal");
 
-  // ----- Year slider (dual-handle, old-style look) -----
-  const yrSVG = d3.select("#yearSlider");
-  const rangeBox = { w:360, h:36, m:{t:6,r:8,b:16,l:8} };
-  let xYear = d3.scaleLinear().domain(yearDomain).nice().range([rangeBox.m.l, rangeBox.w - rangeBox.m.r]);
+  yearStart.min = yearMinDom; yearStart.max = yearMaxDom; yearStart.value = yearMinDom;
+  yearEnd.min = yearMinDom; yearEnd.max = yearMaxDom; yearEnd.value = yearMaxDom;
+  yearStartVal.textContent = yearStart.value;
+  yearEndVal.textContent = yearEnd.value;
 
-  const gTrack = yrSVG.append("g").attr("transform", `translate(0,${rangeBox.h/2})`);
-  gTrack.append("line")
-    .attr("x1", xYear.range()[0]).attr("x2", xYear.range()[1])
-    .attr("y1", 0).attr("y2", 0).attr("stroke", "#2a3a52").attr("stroke-width", 6).attr("stroke-linecap", "round");
-
-  // Brush (but styled like slider)
-  const gBrush = yrSVG.append("g").attr("class","year-brush").attr("transform","translate(0,6)");
-  const gAxis  = yrSVG.append("g").attr("class","year-axis").attr("transform",`translate(0,${rangeBox.h-10})`);
-
-  const brush = d3.brushX()
-    .extent([[xYear.range()[0], 0],[xYear.range()[1], rangeBox.h-22]])
-    .on("brush", brushed)
-    .on("end", brushEnded);
-
-  gBrush.call(brush);
-  gAxis.call(d3.axisBottom(xYear).ticks(6).tickFormat(d3.format("d")));
-
-  const yearRangeVal = document.getElementById("yearRangeVal");
-  function updateYearLabel(){ yearRangeVal.textContent = `${yearStartSel} – ${yearEndSel}`; }
-
-  // initial selection to full range
-  gBrush.call(brush.move, [xYear(yearStartSel), xYear(yearEndSel)]);
-  updateYearLabel();
-
-  function brushed({selection}){
-    if(!selection) return;
-    let [x0,x1] = selection;
-    yearStartSel = Math.round(xYear.invert(x0));
-    yearEndSel   = Math.round(xYear.invert(x1));
-    if(yearStartSel > yearEndSel) [yearStartSel, yearEndSel] = [yearEndSel, yearStartSel];
-    updateYearLabel();
-  }
-  function brushEnded(ev){
-    if(!ev.selection){
-      yearStartSel = yearDomain[0]; yearEndSel = yearDomain[1];
-      gBrush.call(brush.move, [xYear(yearStartSel), xYear(yearEndSel)]);
-    }else{
-      const s = ev.selection.map(px => xYear(Math.round(xYear.invert(px))));
-      gBrush.transition().duration(80).call(brush.move, s);
+  // Ensure start <= end and keep labels in sync
+  function syncYearRange(fromInput) {
+    if (+yearStart.value > +yearEnd.value) {
+      if (fromInput === "start") yearEnd.value = yearStart.value;
+      else yearStart.value = yearEnd.value;
     }
-    render();
+    yearStartVal.textContent = yearStart.value;
+    yearEndVal.textContent = yearEnd.value;
   }
-  function resizeYearSlider(){
-    const rect = yrSVG.node().getBoundingClientRect();
-    const W = Math.max(280, rect.width || rangeBox.w);
-    rangeBox.w = W;
-    xYear.range([rangeBox.m.l, W - rangeBox.m.r]);
 
-    gTrack.select("line")
-      .attr("x1", xYear.range()[0]).attr("x2", xYear.range()[1]);
-
-    gBrush.call(brush.extent([[xYear.range()[0], 0],[xYear.range()[1], rangeBox.h-22]]));
-    gAxis.call(d3.axisBottom(xYear).ticks(6).tickFormat(d3.format("d")));
-
-    gBrush.call(brush.move, [xYear(yearStartSel), xYear(yearEndSel)]);
-  }
-  // ensure fit after layout
-  setTimeout(resizeYearSlider, 0);
-
-  // ----- Render -----
-  function render(){
+  // Render
+  function render() {
     const magCut = +magMinInput.value;
-    const dMax   = +depthMaxInput.value;
+    const dMax = +depthMaxInput.value;
+    magVal.textContent = magCut.toFixed(1);
+    depthVal.textContent = dMax;
+
+    const y0 = +yearStart.value;
+    const y1 = +yearEnd.value;
 
     const filtered = points.filter(d =>
       (d.mag != null && d.mag >= magCut) &&
       (d.depth == null || d.depth <= dMax) &&
-      (d.year != null && d.year >= yearStartSel && d.year <= yearEndSel)
+      (d.year == null ? false : (d.year >= y0 && d.year <= y1))
     );
 
-    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=> d.time + "|" + i);
+    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i) => d.time + "|" + i);
 
     sel.enter().append("circle")
       .attr("class", d => "quake" + (d.depth == null ? " nodata" : ""))
@@ -243,14 +198,17 @@
       .attr("fill-opacity", .85)
       .on("mousemove", (event, d) => {
         const [x, y] = d3.pointer(event, document.querySelector(".view"));
-        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1)
+        tooltip
+          .style("left", (x + 12) + "px")
+          .style("top", (y - 12) + "px")
+          .style("opacity", 1)
           .html(`
             <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
             <div>Depth: <b>${d.depth == null ? "N/A" : Math.round(d.depth) + " km"}</b></div>
             <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
           `);
       })
-      .on("mouseleave", () => tooltip.style("opacity",0));
+      .on("mouseleave", () => tooltip.style("opacity", 0));
 
     sel
       .attr("r", d => size(d.mag ?? magDomain[0]))
@@ -264,67 +222,85 @@
     sel.exit().remove();
   }
 
-  // ----- Legend (fixed) -----
-  function drawLegend(){
+  // Legend (fixed layer)
+  function drawLegend() {
     legendG.selectAll("*").remove();
-    const pad=10, cardW=Math.min(260, Math.max(220, width*0.22)), cardH=110;
-    const x0 = width - cardW - 12, y0 = height - cardH - 12;
+
+    const pad = 10;
+    const cardW = Math.min(260, Math.max(220, width * 0.22));
+    const cardH = 110;
+
+    const x0 = width - cardW - 12;
+    const y0 = height - cardH - 12;
 
     legendG.append("rect").attr("class","legend-card")
-      .attr("x",x0).attr("y",y0).attr("width",cardW).attr("height",cardH);
+      .attr("x", x0).attr("y", y0).attr("width", cardW).attr("height", cardH);
 
+    // Depth gradient
     legendG.append("text").attr("class","legend-title")
-      .attr("x",x0+pad).attr("y",y0+18).text("Depth (km)");
+      .attr("x", x0 + pad).attr("y", y0 + 18).text("Depth (km)");
 
     const barW = cardW - pad*2, barH = 12;
     const gradId = "depthGrad";
     const defs = legendG.append("defs");
-    const grad = defs.append("linearGradient").attr("id",gradId)
+    const grad = defs.append("linearGradient").attr("id", gradId)
       .attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
-    const stops=12;
-    for(let i=0;i<=stops;i++){
-      const t=i/stops, val=depthMin + t*(depthMaxDom-depthMin);
-      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
+    const stops = 12;
+    for (let i=0;i<=stops;i++){
+      const t = i/stops;
+      const val = depthMin + t*(depthMaxDom-depthMin);
+      grad.append("stop").attr("offset", `${t*100}%`).attr("stop-color", color(val));
     }
     legendG.append("rect")
-      .attr("x",x0+pad).attr("y",y0+26).attr("width",barW).attr("height",barH)
-      .attr("rx",6).attr("ry",6).attr("fill",`url(#${gradId})`).attr("stroke","#243142");
+      .attr("x", x0 + pad).attr("y", y0 + 26).attr("width", barW).attr("height", barH)
+      .attr("rx", 6).attr("ry", 6).attr("fill", `url(#${gradId})`).attr("stroke", "#243142");
     const tickY = y0 + 26 + barH + 12;
-    [depthMin, Math.round((depthMin+depthMaxDom)/2), depthMaxDom].forEach((t,i)=>{
-      const tx = x0+pad + (barW * i/2);
-      legendG.append("text").attr("x",tx).attr("y",tickY)
-        .attr("text-anchor", i===0?"start":(i===2?"end":"middle"))
-        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9fb0c6')
-        .attr("font-size",11).text(t);
+    const ticks = [depthMin, Math.round((depthMin+depthMaxDom)/2), depthMaxDom];
+    ticks.forEach((t,i) => {
+      const tx = x0 + pad + (barW * i/(ticks.length-1));
+      legendG.append("text").attr("x", tx).attr("y", tickY)
+        .attr("text-anchor", i===0 ? "start" : (i===ticks.length-1 ? "end" : "middle"))
+        .attr("fill", varMuted()).attr("font-size", 11).text(t);
     });
 
-    const mags=[magDomain[0], (magDomain[0]+magDomain[1])/2, magDomain[1]].map(v=>+v.toFixed(1));
-    const baseY=tickY+8;
+    // Magnitude size legend
+    const mags = [magDomain[0], (magDomain[0]+magDomain[1])/2, magDomain[1]].map(v => +v.toFixed(1));
+    const baseY = tickY + 8;
     legendG.append("text").attr("class","legend-title")
-      .attr("x",x0+pad).attr("y",baseY+16).text("Magnitude");
-    const cx0=x0+pad+72, gap=(cardW - pad - cx0 - 10)/(mags.length-1);
-    mags.forEach((m,i)=>{
-      const cx=cx0 + i*gap, r=size(m);
-      legendG.append("circle").attr("cx",cx).attr("cy",baseY+26)
-        .attr("r",r).attr("fill","#e6e6e6").attr("fill-opacity",.9)
-        .attr("stroke","#000").attr("stroke-opacity",.4);
-      legendG.append("text").attr("x",cx).attr("y",baseY+26+r+12)
-        .attr("text-anchor","middle")
-        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9fb0c6')
-        .attr("font-size",11).text(m);
+      .attr("x", x0 + pad).attr("y", baseY + 16).text("Magnitude");
+    const cx0 = x0 + pad + 72;
+    const gap = (cardW - pad - cx0 - 10) / (mags.length - 1);
+    mags.forEach((m, i) => {
+      const cx = cx0 + i*gap;
+      const r = size(m);
+      legendG.append("circle").attr("cx", cx).attr("cy", baseY + 26)
+        .attr("r", r).attr("fill", "#e6e6e6").attr("fill-opacity", .9)
+        .attr("stroke", "#000").attr("stroke-opacity", .4);
+      legendG.append("text").attr("x", cx).attr("y", baseY + 26 + r + 12)
+        .attr("text-anchor","middle").attr("fill", varMuted()).attr("font-size", 11).text(m);
     });
+
+    function varMuted(){ return getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9fb0c6'; }
   }
 
   drawLegend();
   render();
 
-  // ----- Zoom (legend/year control fixed) -----
-  const zoom = d3.zoom().scaleExtent([0.9,8]).on("zoom", (ev)=>{ zoomLayer.attr("transform", ev.transform); });
-  svg.call(zoom).on("click", (e)=>{
-    if(e.target === svg.node()){
+  // Zoom (legend stays fixed)
+  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (event) => {
+    zoomLayer.attr("transform", event.transform);
+  });
+  svg.call(zoom).on("click", (e) => {
+    if (e.target === svg.node()) {
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
     }
   });
+
+  // Event listeners
+  magMinInput.addEventListener("input", render);
+  depthMaxInput.addEventListener("input", render);
+  yearStart.addEventListener("input", () => { syncYearRange("start"); render(); });
+  yearEnd.addEventListener("input", () => { syncYearRange("end"); render(); });
 })();
 </script>
 </body>
