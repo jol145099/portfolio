@@ -126,7 +126,7 @@
     const path = d3.geoPath(projection);
 
     // Color scale: depth (km). Domain reversed so deep (700) at left of legend.
-    const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]);
+    const color = d3.scaleSequential(d3.interpolateTurbo).domain([700, 0]).clamp(true);
     // Size scale: magnitude
     const r = d3.scaleSqrt().domain([4.5, 8]).range([1.5, 12]);
 
@@ -286,12 +286,13 @@
       const defs = colorSvg.append('defs');
       const grad = defs.append('linearGradient').attr('id', gradId);
       grad.selectAll('stop')
-        .data(d3.range(0, 1.0001, 0.02)) // many stops for smooth gradient
+        .data(d3.range(0, 1.0001, 0.02)) // smooth gradient
         .join('stop')
-        .attr('offset', d => (d*100)+'%')
-        .attr('stop-color', d => color(d*700));
+        .attr('offset', t => (t*100)+'%')
+        // ensure LEFT = deep (700 km), RIGHT = shallow (0 km)
+        .attr('stop-color', t => color(700 - t*700));
 
-      colorSvg.append('rect')
+      colorSvg.append('rect'))
         .attr('x',10).attr('y',12).attr('width',180).attr('height',14)
         .attr('fill', `url(#${gradId})`).attr('stroke','#1e2a36');
 
