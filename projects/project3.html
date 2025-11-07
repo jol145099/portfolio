@@ -79,6 +79,10 @@
       <span>Max depth (km)</span><span id="depthVal">700</span>
       <input id="depthMax" type="range" min="0" max="700" step="10" value="700" />
     </div>
+    <div class="ctrl">
+      <span>Year</span>
+      <select id="yearSelect"></select>
+    </div>
     <div class="fill"></div>
     <div class="hud">Click empty map to reset zoom</div>
   </div>
@@ -128,7 +132,8 @@
     const depth = d.depth === "" || d.depth == null ? null : +d.depth;
     const mag = d.mag === "" || d.mag == null ? null : +d.mag;
     const lat = +d.latitude, lon = +d.longitude;
-    return { time: d.time, place: d.place || "", region: d.region || "", depth, mag, lat, lon };
+    const year = d.time ? new Date(d.time).getUTCFullYear() : null;
+    return { time: d.time, year, place: d.place || "", region: d.region || "", depth, mag, lat, lon };
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
@@ -142,6 +147,14 @@
   const magVals = points.map(d => d.mag).filter(v => v != null && isFinite(v));
   const magDomain = d3.extent(magVals.length ? magVals : [4.5,8]);
   const size = d3.scaleSqrt().domain(magDomain).range([1.8, 11]); // slightly smaller to fit
+
+  const years = Array.from(new Set(points.map(d => d.year).filter(y => y != null))).sort((a,b) => a - b);
+  const yearSelect = document.getElementById("yearSelect");
+
+  // Populate dropdown
+  yearSelect.innerHTML = `<option value="all">All</option>` + 
+    years.map(y => `<option value="${y}">${y}</option>`).join("");
+
 
   // controls
   const magMinInput = document.getElementById("magMin");
@@ -159,12 +172,14 @@
   function render() {
     const magCut = +magMinInput.value;
     const dMax = +depthMaxInput.value;
+    const selectedYear = yearSelect.value;
     magVal.textContent = magCut.toFixed(1);
     depthVal.textContent = dMax;
 
     const filtered = points.filter(d =>
       (d.mag != null && d.mag >= magCut) &&
-      (d.depth == null || d.depth <= dMax)
+      (d.depth == null || d.depth <= dMax) &&
+      (selectedYear === "all" || d.year === +selectedYear)
     );
 
     const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i) => d.time + "|" + i);
@@ -307,6 +322,7 @@
   // update on controls
   document.getElementById("magMin").addEventListener("input", () => { render(); });
   document.getElementById("depthMax").addEventListener("input", () => { render(); });
+  document.getElementById("yearSelect").addEventListener("change", () => { render(); });
 })();
 </script>
 </body>
