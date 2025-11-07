@@ -17,7 +17,7 @@
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
   /* --- Layout: left sidebar + map view --- */
-  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 200px 1fr; gap:0 }
+  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-rows: minmax(360px, 28%) 1fr; gap:0 }
   @media (max-width:900px){ .layout{ grid-template-columns: 260px 1fr; } }
 
   .sidebar{
