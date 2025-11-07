@@ -3,69 +3,135 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Combined Range Filters</title>
+<title>D3 US Earthquakes — Native Dual Sliders</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
-  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#9ad1ff; }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;height:100vh;overflow:hidden}
-  header{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--grid);white-space:nowrap;overflow:hidden}
-  header h1{font-size:16px;margin:0;font-weight:600}
-  header .sub{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis}
-  .topbar{position:absolute;top:52px;left:8px;right:8px;display:grid;grid-template-columns:1fr;gap:8px;background:rgba(15,20,28,.9);border:1px solid var(--grid);border-radius:10px;padding:8px 10px;z-index:2;backdrop-filter:blur(2px)}
-  .filters{display:grid;grid-template-columns:1fr;gap:8px}
-  .row{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center}
-  .label{color:var(--muted);font-size:12px}
-  .values{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;white-space:nowrap}
-  .opts{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--muted)}
-  .view{position:absolute;inset:150px 0 0 0}
-  svg{width:100%;height:100%;display:block}
-  .states{fill:#0d1320;stroke:#2a3a52;stroke-width:.6}
-  .state-borders{fill:none;stroke:#2a3a52;stroke-width:.6;pointer-events:none}
-  .quake{stroke:#000;stroke-opacity:.45}
-  .nodata{fill:#9aa0a6!important;opacity:.9}
-  .legend-card{fill:rgba(10,14,20,.9);stroke:var(--grid);stroke-width:1;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35));rx:10;ry:10}
-  .legend-title{fill:var(--accent);font-weight:600;font-size:12px}
-  .tooltip{position:absolute;pointer-events:none;opacity:0;background:#0d1320;color:var(--text);border:1px solid var(--grid);padding:8px 10px;font-size:12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);transform:translate(-50%,-120%)}
-  /* Brush slider */
-  .slider svg{width:100%;height:40px}
-  .track{stroke:#1d2736;stroke-width:8;stroke-linecap:round}
-  .track-fill{stroke:#4a6ea1;stroke-width:8;stroke-linecap:round}
-  .handle{fill:#e6e6e6;stroke:#000;stroke-opacity:.4}
-  .tick text{fill:var(--muted);font-size:11px}
-  .disabled{opacity:.6;pointer-events:none}
+  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
+  header{ height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden }
+  header h1{ font-size:16px; margin:0; font-weight:600 }
+  header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
+
+  .topbar{
+    position:absolute; top:52px; left:8px; right:8px;
+    display:grid; grid-template-columns:1fr; gap:8px;
+    background:rgba(15,20,28,.9); border:1px solid var(--grid); border-radius:10px;
+    padding:8px 10px; z-index:2; backdrop-filter:blur(2px);
+  }
+  .filters{ display:grid; grid-template-columns:1fr; gap:8px }
+  .row{ display:grid; grid-template-columns:110px 1fr auto; gap:8px; align-items:center }
+  .label{ color:var(--muted); font-size:12px }
+  .values{ color:var(--muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums }
+  .opts{ display:flex; gap:16px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:12px }
+
+  .view{ position:absolute; inset:170px 0 0 0 }
+  svg{ width:100%; height:100%; display:block }
+
+  .states{ fill:#0d1320; stroke:#2a3a52; stroke-width:.6 }
+  .state-borders{ fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none }
+  .quake{ stroke:#000; stroke-opacity:.45 }
+  .nodata{ fill:#9aa0a6 !important; opacity:.9 }
+
+  .legend-card{ fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10 }
+  .legend-title{ fill:#9ad1ff; font-weight:600; font-size:12px }
+  .tooltip{ position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:var(--text); border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%,-120%) }
+
+  /* Native dual-handle slider (stacked inputs) */
+  .slider2{ position:relative; height:38px; display:flex; align-items:center }
+  .slider2 input[type="range"]{
+    -webkit-appearance:none; appearance:none;
+    position:absolute; width:100%; background:none; pointer-events:none;
+  }
+  .slider2 input[type="range"]::-webkit-slider-runnable-track{
+    height:8px; border-radius:999px; background:#dfe8f6;  /* base track */
+  }
+  .slider2 input[type="range"]::-moz-range-track{
+    height:8px; border-radius:999px; background:#dfe8f6;
+  }
+  .slider2 input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:16px; height:16px; border-radius:50%;
+    background:#ffffff; border:2px solid var(--accent);
+    margin-top:-4px; pointer-events:auto;
+  }
+  .slider2 input[type="range"]::-moz-range-thumb{
+    width:16px; height:16px; border-radius:50%;
+    background:#ffffff; border:2px solid var(--accent); pointer-events:auto;
+  }
+  .slider2 input.lower{ z-index:1 } /* lower track gets the blue fill gradient */
+  .slider2 input.upper{ z-index:2 }
+
+  input[type="number"]{ background:#0f141c; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:4px 6px }
+  .disabled{ opacity:.55 }
 </style>
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Combined Range Filters</h1>
-  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom to explore; brush sliders filter by magnitude, depth, and year.</div>
+  <h1>US Earthquakes — Native Dual Sliders</h1>
+  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom; filter with dual sliders for magnitude, depth, and year.</div>
 </header>
 
 <div class="topbar">
   <div class="filters">
+    <!-- Magnitude -->
     <div class="row">
       <div class="label">Magnitude</div>
-      <div class="slider" id="magSlider"></div>
+      <div class="slider2" id="magSlider">
+        <input id="magMinR" class="lower" type="range" step="0.1">
+        <input id="magMaxR" class="upper" type="range" step="0.1">
+      </div>
       <div class="values"><span id="magVals">—</span></div>
     </div>
+    <div class="row" style="grid-template-columns:110px 1fr auto;">
+      <div class="label"></div>
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <span>Min</span><input id="magMinN" type="number" step="0.1" style="width:80px;">
+        <span>Max</span><input id="magMaxN" type="number" step="0.1" style="width:80px;">
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Depth -->
     <div class="row">
       <div class="label">Depth (km)</div>
-      <div class="slider" id="depthSlider"></div>
+      <div class="slider2" id="depthSlider">
+        <input id="depthMinR" class="lower" type="range" step="10">
+        <input id="depthMaxR" class="upper" type="range" step="10">
+      </div>
       <div class="values"><span id="depthVals">—</span></div>
     </div>
+    <div class="row" style="grid-template-columns:110px 1fr auto;">
+      <div class="label"></div>
+      <div class="opts">
+        <label><input id="autoDepthMax" type="checkbox" checked> Auto max depth</label>
+        <label><input id="includeNA" type="checkbox" checked> Include N/A depth</label>
+        <span>Min</span><input id="depthMinN" type="number" step="10" style="width:80px;">
+        <span>Max</span><input id="depthMaxN" type="number" step="10" style="width:80px;">
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Year -->
     <div class="row">
       <div class="label">Year</div>
-      <div class="slider" id="yearSlider"></div>
+      <div class="slider2" id="yearSlider">
+        <input id="yearMinR" class="lower" type="range" step="1">
+        <input id="yearMaxR" class="upper" type="range" step="1">
+      </div>
       <div class="values"><span id="yearVals">—</span></div>
     </div>
+    <div class="row" style="grid-template-columns:110px 1fr auto;">
+      <div class="label"></div>
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <span>Min</span><input id="yearMinN" type="number" step="1" style="width:80px;">
+        <span>Max</span><input id="yearMaxN" type="number" step="1" style="width:80px;">
+      </div>
+      <div></div>
+    </div>
   </div>
-  <div class="opts">
-    <label><input type="checkbox" id="autoDepthMax" checked /> Auto max depth</label>
-    <label><input type="checkbox" id="includeNA" checked /> Include N/A depth</label>
-    <span style="margin-left:auto;color:var(--muted);font-size:11px">Click empty map to reset zoom</span>
-  </div>
+  <div style="text-align:right; color:var(--muted); font-size:11px">Click empty map to reset zoom</div>
 </div>
 
 <div class="view">
@@ -74,7 +140,7 @@
 </div>
 
 <script>
-(async function(){
+(async function () {
   const svg = d3.select("#svg");
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
@@ -84,181 +150,171 @@
 
   function sizeSVG(){
     const r = document.querySelector(".view").getBoundingClientRect();
-    svg.attr("viewBox",[0,0,r.width,r.height]);
-    return {width:r.width,height:r.height};
+    svg.attr("viewBox", [0,0,r.width,r.height]);
+    return { width:r.width, height:r.height };
   }
-  let {width,height}=sizeSVG();
-  window.addEventListener("resize",()=>{({width,height}=sizeSVG()); drawLegend(); render(); buildAllSliders();});
+  let { width, height } = sizeSVG();
+  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); drawLegend(); render(); });
 
-  // map
-  const projection = d3.geoAlbersUsa().translate([width/2,height/2]).scale(Math.min(width,height)*1.2);
+  // Projection & map
+  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width,height)*1.2);
   const path = d3.geoPath(projection);
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
   const states = topojson.feature(us, us.objects.states);
-  const borders = topojson.mesh(us, us.objects.states,(a,b)=>a!==b);
-  mapG.append("path").datum(states).attr("class","states").attr("d",path);
-  mapG.append("path").datum(borders).attr("class","state-borders").attr("d",path);
+  const borders = topojson.mesh(us, us.objects.states, (a,b)=>a!==b);
+  mapG.append("path").datum(states).attr("class","states").attr("d", path);
+  mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // data
+  // Data
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
     const depth = (d.depth===""||d.depth==null)?null:+d.depth;
-    const mag = (d.mag===""||d.mag==null)?null:+d.mag;
+    const mag   = (d.mag===""  ||d.mag==null)  ?null:+d.mag;
     const lat=+d.latitude, lon=+d.longitude;
     const year = d.time ? new Date(d.time).getUTCFullYear() : null;
-    return {time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon};
+    return { time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon };
   });
-  const points = data.filter(d=>isFinite(d.lat)&&isFinite(d.lon));
+  const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // domains
-  const depthVals = points.map(d=>d.depth).filter(v=>v!=null&&isFinite(v));
-  const depthExtent = d3.extent(depthVals.length?depthVals:[0,700]);
-  const dDomMin = Math.max(0, Math.floor((depthExtent[0]??0)));
-  const dDomMax = Math.min(700, Math.ceil((depthExtent[1]??700)));
+  // Domains
+  const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
+  const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
+  const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
+  const dDomMax   = Math.min(700, Math.ceil((depthExt[1] ?? 700)));
 
-  const magVals = points.map(d=>d.mag).filter(v=>v!=null&&isFinite(v));
-  const magDom = d3.extent(magVals.length?magVals:[4.5,8]);
+  const magVals = points.map(d=>d.mag).filter(v=>v!=null && isFinite(v));
+  const magDom  = d3.extent(magVals.length ? magVals : [4.5,8]);
 
-  const yearVals = points.map(d=>d.year).filter(y=>y!=null&&isFinite(y));
-  const yearDom = d3.extent(yearVals.length?yearVals:[1950,2025]);
+  const yearVals = points.map(d=>d.year).filter(y=>y!=null && isFinite(y));
+  const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
-  const color = d3.scaleSequential([dDomMin,dDomMax], d3.interpolateTurbo);
-  const size = d3.scaleSqrt().domain(magDom).range([1.8,11]);
+  const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
+  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
 
   // UI state
-  let magRange = [magDom[0], magDom[1]];
+  let magRange   = [magDom[0], magDom[1]];
   let depthRange = [dDomMin, dDomMax];
-  let yearRange = [yearDom[0], yearDom[1]];
-  const autoDepthMax = document.getElementById("autoDepthMax");
-  const includeNA = document.getElementById("includeNA");
+  let yearRange  = [yearDom[0], yearDom[1]];
 
-  // sliders (brush-based)
-  function buildSlider({containerId, domain, initial, step=1, format=v=>v, onChange, lockMax=false}){
-    const div = d3.select(containerId);
-    div.selectAll("*").remove();
+  // Generic native dual-slider initializer
+  function initDualNative({
+    domain, step, initial, ids, onChange, lockMaxCheckboxId=null, labelElId
+  }){
+    const lowerR = document.getElementById(ids.lowerRange);
+    const upperR = document.getElementById(ids.upperRange);
+    const lowerN = document.getElementById(ids.lowerNum);
+    const upperN = document.getElementById(ids.upperNum);
+    const label  = document.getElementById(labelElId);
+    const lockBox = lockMaxCheckboxId ? document.getElementById(lockMaxCheckboxId) : null;
 
-    const w = div.node().getBoundingClientRect().width || 600;
-    const h = 40, margin = {left:8,right:8,top:6,bottom:16};
-    const innerW = w - margin.left - margin.right;
-    const y = h/2;
+    // configure min/max/step
+    [lowerR.min, upperR.min, lowerN.min, upperN.min] = [domain[0], domain[0], domain[0], domain[0]];
+    [lowerR.max, upperR.max, lowerN.max, upperN.max] = [domain[1], domain[1], domain[1], domain[1]];
+    [lowerR.step, upperR.step, lowerN.step, upperN.step] = [step, step, step, step];
 
-    const x = d3.scaleLinear().domain(domain).range([margin.left, w - margin.right]);
-    const svgS = div.append("svg").attr("width", w).attr("height", h);
+    const clamp = v => Math.min(domain[1], Math.max(domain[0], (step>=1? Math.round(v/step)*step : Math.round(v*10)/10)));
 
-    // track
-    svgS.append("line").attr("class","track")
-      .attr("x1", x(domain[0])).attr("x2", x(domain[1])).attr("y1", y).attr("y2", y);
-
-    // axis ticks (min, mid, max)
-    const ticks = [domain[0], Math.round((domain[0]+domain[1])/2), domain[1]];
-    svgS.selectAll(".tick").data(ticks).enter().append("text")
-      .attr("class","tick").attr("x", d=>x(d)).attr("y", y+16)
-      .attr("text-anchor",(d,i)=> i===0 ? "start" : i===2 ? "end" : "middle")
-      .text(d=>format(d));
-
-    // selection line
-    const fill = svgS.append("line").attr("class","track-fill")
-      .attr("x1", x(initial[0])).attr("x2", x(initial[1])).attr("y1", y).attr("y2", y);
-
-    // handles
-    const h1 = svgS.append("circle").attr("class","handle").attr("r",6).attr("cx", x(initial[0])).attr("cy", y);
-    const h2 = svgS.append("circle").attr("class","handle").attr("r",6).attr("cx", x(initial[1])).attr("cy", y);
-
-    // brush
-    const brush = d3.brushX()
-      .extent([[x(domain[0]), y-8],[x(domain[1]), y+8]])
-      .on("brush", ({selection})=>{
-        if(!selection) return;
-        let [px0,px1] = selection;
-        let v0 = +d3.max([domain[0], d3.min([domain[1], x.invert(px0)])]);
-        let v1 = +d3.max([domain[0], d3.min([domain[1], x.invert(px1)])]);
-
-        // lock upper handle to domain max if requested
-        if(lockMax){ v1 = domain[1]; px1 = x(v1); }
-
-        // snap to step
-        if(step && step>0){
-          const snap = v => Math.round(v/step)*step;
-          v0 = +snap(v0); v1 = +snap(v1);
-          px0 = x(v0); px1 = x(v1);
-        }
-
-        // ensure order
-        if(v0>v1){ const t=v0; v0=v1; v1=t; const tp=px0; px0=px1; px1=tp; }
-
-        fill.attr("x1", px0).attr("x2", px1);
-        h1.attr("cx", px0); h2.attr("cx", px1);
-        onChange([v0, v1], false);
-      })
-      .on("end", ({selection})=>{
-        if(!selection) return;
-        let [px0,px1] = selection;
-        let v0 = +x.invert(px0), v1 = +x.invert(px1);
-        if(lockMax){ v1 = domain[1]; }
-        // snap
-        if(step && step>0){
-          const snap = v => Math.round(v/step)*step;
-          v0 = +snap(v0); v1 = +snap(v1);
-        }
-        onChange([v0, v1], true);
-      });
-
-    const gBrush = svgS.append("g").call(brush)
-      .call(brush.move, [x(initial[0]), x(initial[1])]);
-
-    // if lockMax, visually dim right handle area
-    if(lockMax){
-      h2.classed("disabled", true);
+    function paintTrack(minV, maxV){
+      const pct = v => 100 * (v - domain[0]) / (domain[1] - domain[0]);
+      const g = `linear-gradient(to right,
+        #dfe8f6 ${pct(domain[0])}%,
+        var(--accent) ${pct(minV)}%,
+        var(--accent) ${pct(maxV)}%,
+        #dfe8f6 ${pct(domain[1])}%)`;
+      lowerR.style.background = g;
     }
 
-    // return a way to programmatically set/lock
-    return {
-      move: (range)=> gBrush.call(brush.move, [x(range[0]), x(range[1])]),
-      setLockMax: (locked, currentRange)=>{
-        if(locked){
-          h2.classed("disabled", true);
-          const r = [currentRange[0], domain[1]];
-          gBrush.call(brush.move, [x(r[0]), x(r[1])]);
-        }else{
-          h2.classed("disabled", false);
-          gBrush.call(brush.move, [x(currentRange[0]), x(currentRange[1])]);
+    function sync([lo, hi], notify=true){
+      let minV = clamp(Math.min(lo, hi));
+      let maxV = clamp(Math.max(lo, hi));
+      if (lockBox && lockBox.checked) maxV = domain[1];
+
+      lowerR.value = minV; upperR.value = maxV;
+      lowerN.value = minV; upperN.value = maxV;
+      paintTrack(minV, maxV);
+
+      if (label){
+        const fmt = step===0.1 ? (x=>(+x).toFixed(1)) : (x=>x);
+        label.textContent = `${fmt(minV)} – ${fmt(maxV)}${lockBox && lockBox.checked ? ' (auto max)' : ''}`;
+      }
+
+      if (lockBox){
+        if (lockBox.checked){
+          upperR.setAttribute('disabled', 'disabled');
+          upperN.setAttribute('disabled', 'disabled');
+          upperR.classList.add('disabled'); upperN.classList.add('disabled');
+        } else {
+          upperR.removeAttribute('disabled'); upperN.removeAttribute('disabled');
+          upperR.classList.remove('disabled'); upperN.classList.remove('disabled');
         }
       }
-    };
+
+      if (notify) onChange([minV, maxV]);
+    }
+
+    // Events
+    lowerR.addEventListener('input', ()=> {
+      const lo = +lowerR.value, hi = +upperR.value;
+      if (lo > hi && !(lockBox && lockBox.checked)) upperR.value = lo;
+      sync([+lowerR.value, +upperR.value]);
+    });
+    upperR.addEventListener('input', ()=> {
+      if (lockBox && lockBox.checked) return;
+      const lo = +lowerR.value, hi = +upperR.value;
+      if (hi < lo) lowerR.value = hi;
+      sync([+lowerR.value, +upperR.value]);
+    });
+
+    lowerN.addEventListener('change', ()=> {
+      const lo = clamp(+lowerN.value);
+      const hi = (lockBox && lockBox.checked) ? domain[1] : clamp(+upperN.value);
+      sync([lo, hi]);
+    });
+    upperN.addEventListener('change', ()=> {
+      if (lockBox && lockBox.checked) return;
+      const lo = clamp(+lowerN.value), hi = clamp(+upperN.value);
+      sync([lo, hi]);
+    });
+
+    if (lockBox){
+      lockBox.addEventListener('change', ()=> {
+        const lo = clamp(+lowerN.value);
+        const hi = lockBox.checked ? domain[1] : clamp(+upperN.value);
+        sync([lo, hi]);
+      });
+    }
+
+    // Initial paint
+    sync(initial ?? domain, /*notify=*/true);
+    // Return a way to programmatically update (e.g., on window resize if needed)
+    return { set: (rng)=> sync(rng, true) };
   }
 
-  const fmtMag = v => (+v).toFixed(1);
+  // Initialize Magnitude slider
+  const magCtrl = initDualNative({
+    domain: magDom, step: 0.1, initial: magRange,
+    ids: { lowerRange:'magMinR', upperRange:'magMaxR', lowerNum:'magMinN', upperNum:'magMaxN' },
+    labelElId: 'magVals',
+    onChange: (r)=>{ magRange = r; render(); }
+  });
 
-  let magCtrl, depthCtrl, yearCtrl;
+  // Initialize Depth slider (with Auto max lock)
+  const depthCtrl = initDualNative({
+    domain: [dDomMin, dDomMax], step: 10, initial: depthRange,
+    ids: { lowerRange:'depthMinR', upperRange:'depthMaxR', lowerNum:'depthMinN', upperNum:'depthMaxN' },
+    lockMaxCheckboxId: 'autoDepthMax',
+    labelElId: 'depthVals',
+    onChange: (r)=>{ depthRange = r; render(); }
+  });
 
-  function buildAllSliders(){
-    const lockDepthMax = autoDepthMax.checked;
-    magCtrl = buildSlider({
-      containerId:"#magSlider",
-      domain:magDom, initial:magRange, step:0.1, format:fmtMag,
-      onChange:(r)=>{ magRange = r; updateLabels(); render(); }
-    });
-    depthCtrl = buildSlider({
-      containerId:"#depthSlider",
-      domain:[dDomMin,dDomMax],
-      initial: lockDepthMax ? [depthRange[0], dDomMax] : depthRange,
-      step:10, format:v=>v,
-      onChange:(r)=>{ depthRange = lockDepthMax ? [r[0], dDomMax] : r; updateLabels(); render(); },
-      lockMax: lockDepthMax
-    });
-    yearCtrl = buildSlider({
-      containerId:"#yearSlider",
-      domain:yearDom, initial:yearRange, step:1, format:v=>v,
-      onChange:(r)=>{ yearRange = r; updateLabels(); render(); }
-    });
-  }
+  // Initialize Year slider
+  const yearCtrl = initDualNative({
+    domain: yearDom, step: 1, initial: yearRange,
+    ids: { lowerRange:'yearMinR', upperRange:'yearMaxR', lowerNum:'yearMinN', upperNum:'yearMaxN' },
+    labelElId: 'yearVals',
+    onChange: (r)=>{ yearRange = r; render(); }
+  });
 
-  function updateLabels(){
-    d3.select("#magVals").text(`${fmtMag(magRange[0])} – ${fmtMag(magRange[1])}`);
-    d3.select("#depthVals").text(`${depthRange[0]} – ${depthRange[1]}${autoDepthMax.checked?' (auto max)':''}`);
-    d3.select("#yearVals").text(`${yearRange[0]} – ${yearRange[1]}`);
-  }
-
-  // legend
+  // Legend (fixed)
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad=10, cardW=Math.min(260,Math.max(220,width*0.22)), cardH=110;
@@ -273,19 +329,21 @@
     const grad=defs.append("linearGradient").attr("id",gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
     const stops=12;
     for(let i=0;i<=stops;i++){
-      const t=i/stops, val=dDomMin+t*(dDomMax-dDomMin);
-      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color",color(val));
+      const t=i/stops, val=dDomMin + t*(dDomMax-dDomMin);
+      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
     }
-    legendG.append("rect").attr("x",x0+pad).attr("y",y0+26).attr("width",barW).attr("height",barH).attr("rx",6).attr("ry",6)
-      .attr("fill",`url(#${gradId})`).attr("stroke","#243142");
+    legendG.append("rect").attr("x",x0+pad).attr("y",y0+26).attr("width",barW).attr("height",barH)
+      .attr("rx",6).attr("ry",6).attr("fill",`url(#${gradId})`).attr("stroke","#243142");
     const tickY=y0+26+barH+12;
     [dDomMin, Math.round((dDomMin+dDomMax)/2), dDomMax].forEach((t,i)=>{
-      const tx=x0+pad+(barW*i/2);
-      legendG.append("text").attr("x",tx).attr("y",tickY).attr("text-anchor", i===0?'start':i===2?'end':'middle')
-        .attr("fill",getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6').attr("font-size",11).text(t);
+      const tx = x0+pad + (barW * i/2);
+      legendG.append("text").attr("x",tx).attr("y",tickY)
+        .attr("text-anchor", i===0?'start':i===2?'end':'middle')
+        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
+        .attr("font-size",11).text(t);
     });
 
-    const mags=[magDom[0],(magDom[0]+magDom[1])/2,magDom[1]].map(v=>+v.toFixed(1));
+    const mags=[magDom[0], (magDom[0]+magDom[1])/2, magDom[1]].map(v=>+v.toFixed(1));
     const baseY=tickY+8;
     legendG.append("text").attr("class","legend-title").attr("x",x0+pad).attr("y",baseY+16).text("Magnitude");
     const cx0=x0+pad+72, gap=(cardW-pad-cx0-10)/(mags.length-1);
@@ -294,71 +352,68 @@
       legendG.append("circle").attr("cx",cx).attr("cy",baseY+26).attr("r",r).attr("fill","#e6e6e6").attr("fill-opacity",.9)
         .attr("stroke","#000").attr("stroke-opacity",.4);
       legendG.append("text").attr("x",cx).attr("y",baseY+26+r+12).attr("text-anchor","middle")
-        .attr("fill",getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6').attr("font-size",11).text(m);
+        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
+        .attr("font-size",11).text(m);
     });
   }
 
   function render(){
     const allowNA = document.getElementById("includeNA").checked;
-    // enforce auto max depth
-    if(autoDepthMax.checked){ depthRange[1]=dDomMax; }
+
+    // Enforce auto max depth at render-time too (in case someone toggled it)
+    const autoDepthMax = document.getElementById("autoDepthMax");
+    if (autoDepthMax.checked) depthRange[1] = dDomMax;
 
     const filtered = points.filter(d=>{
-      const magOK = (d.mag!=null && d.mag>=magRange[0] && d.mag<=magRange[1]);
-      const yearOK = (d.year!=null && d.year>=yearRange[0] && d.year<=yearRange[1]);
-      const depthOK = d.depth==null ? allowNA : (d.depth>=depthRange[0] && d.depth<=depthRange[1]);
+      const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
+      const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
+      const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
       return magOK && yearOK && depthOK;
     });
 
     const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=>d.time+"|"+i);
 
     sel.enter().append("circle")
-      .attr("class",d=>"quake"+(d.depth==null?" nodata":""))
-      .attr("r",d=>size(d.mag??magDom[0]))
-      .attr("transform", d=>{
-        const p=projection([d.lon,d.lat]); return p?`translate(${p[0]},${p[1]})`:"translate(-999,-999)";
+      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("transform", d => {
+        const p = projection([d.lon, d.lat]);
+        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
       })
-      .attr("fill", d=> d.depth==null ? "#9aa0a6" : color(d.depth))
+      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
       .attr("fill-opacity", .85)
-      .on("mousemove",(event,d)=>{
-        const [x,y]=d3.pointer(event, document.querySelector(".view"));
+      .on("mousemove", (event, d) => {
+        const [x,y] = d3.pointer(event, document.querySelector(".view"));
         tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
-          <div><b>${d.mag?.toFixed(1)??"M?"}</b> — <span style="color:var(--muted)">${d.place||d.region||"Location"}</span></div>
-          <div>Depth: <b>${d.depth==null?"N/A":Math.round(d.depth)+" km"}</b></div>
-          <div style="color:var(--muted)">${d.time?new Date(d.time).toUTCString():""}</div>
+          <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
+          <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
+          <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
         `);
       })
-      .on("mouseleave",()=> tooltip.style("opacity",0));
+      .on("mouseleave", ()=> tooltip.style("opacity", 0));
 
     sel
-      .attr("r",d=>size(d.mag??magDom[0]))
-      .attr("fill", d=> d.depth==null ? "#9aa0a6" : color(d.depth))
-      .attr("class",d=>"quake"+(d.depth==null?" nodata":""))
-      .attr("transform", d=>{
-        const p=projection([d.lon,d.lat]); return p?`translate(${p[0]},${p[1]})`:"translate(-999,-999)";
+      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
+      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+      .attr("transform", d => {
+        const p = projection([d.lon, d.lat]);
+        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
       });
 
     sel.exit().remove();
-
-    updateLabels();
   }
 
-  // init
   drawLegend();
-  buildAllSliders();
   render();
 
-  // zoom
-  const zoom = d3.zoom().scaleExtent([0.9,8]).on("zoom", (ev)=> zoomLayer.attr("transform", ev.transform));
-  svg.call(zoom).on("click",(e)=>{ if(e.target===svg.node()) svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); });
-
-  // options
-  autoDepthMax.addEventListener("change", ()=>{
-    // rebuild depth slider with/without lock
-    buildAllSliders();
-    render();
+  // Zoom (legend fixed)
+  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
+    zoomLayer.attr("transform", ev.transform);
   });
-  includeNA.addEventListener("change", ()=> render());
+  svg.call(zoom).on("click", (e)=>{
+    if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  });
 })();
 </script>
 </body>
