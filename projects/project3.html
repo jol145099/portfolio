@@ -92,9 +92,10 @@
 (async function () {
   const svg = d3.select("#svg");
   const g = svg.append("g");
-  const mapG = g.append("g");
-  const ptsG = g.append("g");
-  const legendG = g.append("g");
+  const zoomLayer = svg.append("g");
+  const mapG = zoomLayer.append("g");
+  const ptsG = zoomLayer.append("g");
+  const legendG = svg.append("g");
   const tooltip = d3.select("#tooltip");
 
   function sizeSVG() {
@@ -289,9 +290,15 @@
   render();
 
   // zoom/pan within the single page
-  const zoom = d3.zoom().on("zoom", (e) => { plotG.attr("transform", e.transform); });
+  const zoom = d3.zoom()
+  .scaleExtent([0.9, 8])
+  .on("zoom", (event) => {
+    zoomLayer.attr("transform", event.transform);
+  });
 
-  svg.call(zoom).on("click", (e) => {
+  svg.call(zoom);
+
+  svg.on("click", (e) => {
     if (e.target === svg.node()) {
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
     }
