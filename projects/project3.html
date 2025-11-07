@@ -223,7 +223,7 @@
           .attr('cx', d => projection([d.lon,d.lat])[0])
           .attr('cy', d => projection([d.lon,d.lat])[1])
           .attr('r', 0)
-          .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
+          .style('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth), 'important')
           .on('mouseenter', (event, d) => showTooltip(event, d))
           .on('mousemove', (event, d) => moveTooltip(event))
           .on('mouseleave', hideTooltip)
@@ -235,7 +235,7 @@
             .attr('cx', d => projection([d.lon,d.lat])[0])
             .attr('cy', d => projection([d.lon,d.lat])[1])
             .attr('r', d => r(d.mag))
-            .attr('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth))
+            .style('fill', d => d.depth==null ? '#9aa5b1' : color(d.depth), 'important')
           )
       );
 
