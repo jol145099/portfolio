@@ -3,31 +3,43 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Native Dual Sliders</title>
+<title>D3 US Earthquakes — Left Sidebar Filters</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
   :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; }
+
   *{ box-sizing:border-box }
   body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
-  header{ height:48px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden }
+
+  header{ height:52px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden }
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
-  .topbar{
-    position:absolute; top:52px; left:8px; right:8px;
-    display:grid; grid-template-columns:1fr; gap:8px;
-    background:rgba(15,20,28,.9); border:1px solid var(--grid); border-radius:10px;
-    padding:8px 10px; z-index:2; backdrop-filter:blur(2px);
-  }
-  .filters{ display:grid; grid-template-columns:1fr; gap:8px }
-  .row{ display:grid; grid-template-columns:110px 1fr auto; gap:8px; align-items:center }
-  .label{ color:var(--muted); font-size:12px }
-  .values{ color:var(--muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums }
-  .opts{ display:flex; gap:16px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:12px }
+  /* --- Layout: left sidebar + map view --- */
+  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 300px 1fr; gap:0 }
+  @media (max-width:900px){ .layout{ grid-template-columns: 260px 1fr; } }
 
-  .view{ position:absolute; inset:170px 0 0 0 }
-  svg{ width:100%; height:100%; display:block }
+  .sidebar{
+    border-right:1px solid var(--grid);
+    background:rgba(15,20,28,.9);
+    padding:12px 10px;
+    overflow:auto;
+  }
+  .filters{ display:grid; grid-template-columns:1fr; gap:14px }
+  .section{ display:grid; grid-template-columns:1fr; gap:8px; padding-bottom:6px; border-bottom:1px dashed #1c2837 }
+  .section:last-child{ border-bottom:none; }
+  .row{ display:grid; grid-template-columns:90px 1fr; gap:8px; align-items:center }
+  .row.values{ grid-template-columns:90px 1fr; gap:8px; align-items:center }
+  .label{ color:var(--muted); font-size:12px }
+  .valuebox{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12px }
+  .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
+  input[type="number"]{ background:#0f141c; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:4px 6px; width:90px }
+
+  .opts{ display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; padding-top:2px }
+
+  .view{ position:relative }
+  svg{ width:100%; height:calc(100%); display:block }
 
   .states{ fill:#0d1320; stroke:#2a3a52; stroke-width:.6 }
   .state-borders{ fill:none; stroke:#2a3a52; stroke-width:.6; pointer-events:none }
@@ -36,16 +48,17 @@
 
   .legend-card{ fill:rgba(10,14,20,.9); stroke:var(--grid); stroke-width:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx:10; ry:10 }
   .legend-title{ fill:#9ad1ff; font-weight:600; font-size:12px }
+
   .tooltip{ position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:var(--text); border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%,-120%) }
 
   /* Native dual-handle slider (stacked inputs) */
-  .slider2{ position:relative; height:38px; display:flex; align-items:center }
+  .slider2{ position:relative; height:38px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{
     -webkit-appearance:none; appearance:none;
     position:absolute; width:100%; background:none; pointer-events:none;
   }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{
-    height:8px; border-radius:999px; background:#dfe8f6;  /* base track */
+    height:8px; border-radius:999px; background:#dfe8f6;
   }
   .slider2 input[type="range"]::-moz-range-track{
     height:8px; border-radius:999px; background:#dfe8f6;
@@ -60,83 +73,93 @@
     width:16px; height:16px; border-radius:50%;
     background:#ffffff; border:2px solid var(--accent); pointer-events:auto;
   }
-  .slider2 input.lower{ z-index:1 } /* lower track gets the blue fill gradient */
+  .slider2 input.lower{ z-index:1 }
   .slider2 input.upper{ z-index:2 }
-
-  input[type="number"]{ background:#0f141c; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:4px 6px }
-  .disabled{ opacity:.55 }
 </style>
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Native Dual Sliders</h1>
-  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom; filter with dual sliders for magnitude, depth, and year.</div>
+  <h1>US Earthquakes — Left Sidebar Filters</h1>
+  <div class="sub">Size = magnitude, color = depth (km). Drag to pan & zoom. Filters live on the left.</div>
 </header>
 
-<div class="topbar">
-  <div class="filters">
-    <!-- Magnitude -->
-    <div class="row">
-      <div class="label">Magnitude</div>
-      <div class="slider2" id="magSlider">
-        <input id="magMinR" class="lower" type="range" step="0.1">
-        <input id="magMaxR" class="upper" type="range" step="0.1">
-      </div>
-      <div class="values"><span id="magVals">—</span></div>
-    </div>
-    <div class="row" style="grid-template-columns:110px 1fr auto;">
-      <div class="label"></div>
-      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
-        <span>Min</span><input id="magMinN" type="number" step="0.1" style="width:80px;">
-        <span>Max</span><input id="magMaxN" type="number" step="0.1" style="width:80px;">
-      </div>
-      <div></div>
-    </div>
+<div class="layout">
+  <!-- Sidebar filters -->
+  <aside class="sidebar">
+    <div class="filters">
 
-    <!-- Depth -->
-    <div class="row">
-      <div class="label">Depth (km)</div>
-      <div class="slider2" id="depthSlider">
-        <input id="depthMinR" class="lower" type="range" step="10">
-        <input id="depthMaxR" class="upper" type="range" step="10">
+      <!-- Magnitude -->
+      <div class="section" id="magSection">
+        <div class="row">
+          <div class="label">Magnitude</div>
+          <div class="valuespan" id="magVals">—</div>
+        </div>
+        <div class="slider2">
+          <input id="magMinR" class="lower" type="range" step="0.1">
+          <input id="magMaxR" class="upper" type="range" step="0.1">
+        </div>
+        <div class="row values">
+          <div class="label"></div>
+          <div class="valuebox">
+            <span>Min</span><input id="magMinN" type="number" step="0.1">
+            <span>Max</span><input id="magMaxN" type="number" step="0.1">
+          </div>
+        </div>
       </div>
-      <div class="values"><span id="depthVals">—</span></div>
-    </div>
-    <div class="row" style="grid-template-columns:110px 1fr auto;">
-      <div class="label"></div>
-      <div class="opts">
-        <label><input id="autoDepthMax" type="checkbox" checked> Auto max depth</label>
-        <label><input id="includeNA" type="checkbox" checked> Include N/A depth</label>
-        <span>Min</span><input id="depthMinN" type="number" step="10" style="width:80px;">
-        <span>Max</span><input id="depthMaxN" type="number" step="10" style="width:80px;">
-      </div>
-      <div></div>
-    </div>
 
-    <!-- Year -->
-    <div class="row">
-      <div class="label">Year</div>
-      <div class="slider2" id="yearSlider">
-        <input id="yearMinR" class="lower" type="range" step="1">
-        <input id="yearMaxR" class="upper" type="range" step="1">
+      <!-- Depth -->
+      <div class="section" id="depthSection">
+        <div class="row">
+          <div class="label">Depth (km)</div>
+          <div class="valuespan" id="depthVals">—</div>
+        </div>
+        <div class="slider2">
+          <input id="depthMinR" class="lower" type="range" step="10">
+          <input id="depthMaxR" class="upper" type="range" step="10">
+        </div>
+        <div class="row values">
+          <div class="label"></div>
+          <div class="valuebox">
+            <span>Min</span><input id="depthMinN" type="number" step="10">
+            <span>Max</span><input id="depthMaxN" type="number" step="10">
+          </div>
+        </div>
+        <div class="opts">
+          <label><input id="includeNA" type="checkbox"> Include N/A depth</label>
+        </div>
       </div>
-      <div class="values"><span id="yearVals">—</span></div>
-    </div>
-    <div class="row" style="grid-template-columns:110px 1fr auto;">
-      <div class="label"></div>
-      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
-        <span>Min</span><input id="yearMinN" type="number" step="1" style="width:80px;">
-        <span>Max</span><input id="yearMaxN" type="number" step="1" style="width:80px;">
+
+      <!-- Year -->
+      <div class="section" id="yearSection">
+        <div class="row">
+          <div class="label">Year</div>
+          <div class="valuespan" id="yearVals">—</div>
+        </div>
+        <div class="slider2">
+          <input id="yearMinR" class="lower" type="range" step="1">
+          <input id="yearMaxR" class="upper" type="range" step="1">
+        </div>
+        <div class="row values">
+          <div class="label"></div>
+          <div class="valuebox">
+            <span>Min</span><input id="yearMinN" type="number" step="1">
+            <span>Max</span><input id="yearMaxN" type="number" step="1">
+          </div>
+        </div>
       </div>
-      <div></div>
+
+      <div class="section" style="padding-top:4px;">
+        <div class="label" style="opacity:.8;">Tip: click empty map to reset zoom.</div>
+      </div>
+
     </div>
+  </aside>
+
+  <!-- Map + legend -->
+  <div class="view">
+    <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="tooltip" id="tooltip"></div>
   </div>
-  <div style="text-align:right; color:var(--muted); font-size:11px">Click empty map to reset zoom</div>
-</div>
-
-<div class="view">
-  <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
-  <div class="tooltip" id="tooltip"></div>
 </div>
 
 <script>
@@ -196,15 +219,12 @@
   let yearRange  = [yearDom[0], yearDom[1]];
 
   // Generic native dual-slider initializer
-  function initDualNative({
-    domain, step, initial, ids, onChange, lockMaxCheckboxId=null, labelElId
-  }){
+  function initDualNative({ domain, step, initial, ids, onChange, labelElId }){
     const lowerR = document.getElementById(ids.lowerRange);
     const upperR = document.getElementById(ids.upperRange);
     const lowerN = document.getElementById(ids.lowerNum);
     const upperN = document.getElementById(ids.upperNum);
     const label  = document.getElementById(labelElId);
-    const lockBox = lockMaxCheckboxId ? document.getElementById(lockMaxCheckboxId) : null;
 
     // configure min/max/step
     [lowerR.min, upperR.min, lowerN.min, upperN.min] = [domain[0], domain[0], domain[0], domain[0]];
@@ -226,70 +246,44 @@
     function sync([lo, hi], notify=true){
       let minV = clamp(Math.min(lo, hi));
       let maxV = clamp(Math.max(lo, hi));
-      if (lockBox && lockBox.checked) maxV = domain[1];
-
       lowerR.value = minV; upperR.value = maxV;
       lowerN.value = minV; upperN.value = maxV;
       paintTrack(minV, maxV);
 
       if (label){
         const fmt = step===0.1 ? (x=>(+x).toFixed(1)) : (x=>x);
-        label.textContent = `${fmt(minV)} – ${fmt(maxV)}${lockBox && lockBox.checked ? ' (auto max)' : ''}`;
+        label.textContent = `${fmt(minV)} – ${fmt(maxV)}`;
       }
-
-      if (lockBox){
-        if (lockBox.checked){
-          upperR.setAttribute('disabled', 'disabled');
-          upperN.setAttribute('disabled', 'disabled');
-          upperR.classList.add('disabled'); upperN.classList.add('disabled');
-        } else {
-          upperR.removeAttribute('disabled'); upperN.removeAttribute('disabled');
-          upperR.classList.remove('disabled'); upperN.classList.remove('disabled');
-        }
-      }
-
       if (notify) onChange([minV, maxV]);
     }
 
     // Events
     lowerR.addEventListener('input', ()=> {
       const lo = +lowerR.value, hi = +upperR.value;
-      if (lo > hi && !(lockBox && lockBox.checked)) upperR.value = lo;
+      if (lo > hi) upperR.value = lo;
       sync([+lowerR.value, +upperR.value]);
     });
     upperR.addEventListener('input', ()=> {
-      if (lockBox && lockBox.checked) return;
       const lo = +lowerR.value, hi = +upperR.value;
       if (hi < lo) lowerR.value = hi;
       sync([+lowerR.value, +upperR.value]);
     });
 
     lowerN.addEventListener('change', ()=> {
-      const lo = clamp(+lowerN.value);
-      const hi = (lockBox && lockBox.checked) ? domain[1] : clamp(+upperN.value);
+      const lo = clamp(+lowerN.value), hi = clamp(+upperN.value);
       sync([lo, hi]);
     });
     upperN.addEventListener('change', ()=> {
-      if (lockBox && lockBox.checked) return;
       const lo = clamp(+lowerN.value), hi = clamp(+upperN.value);
       sync([lo, hi]);
     });
 
-    if (lockBox){
-      lockBox.addEventListener('change', ()=> {
-        const lo = clamp(+lowerN.value);
-        const hi = lockBox.checked ? domain[1] : clamp(+upperN.value);
-        sync([lo, hi]);
-      });
-    }
-
     // Initial paint
     sync(initial ?? domain, /*notify=*/true);
-    // Return a way to programmatically update (e.g., on window resize if needed)
     return { set: (rng)=> sync(rng, true) };
   }
 
-  // Initialize Magnitude slider
+  // Initialize sliders
   const magCtrl = initDualNative({
     domain: magDom, step: 0.1, initial: magRange,
     ids: { lowerRange:'magMinR', upperRange:'magMaxR', lowerNum:'magMinN', upperNum:'magMaxN' },
@@ -297,16 +291,13 @@
     onChange: (r)=>{ magRange = r; render(); }
   });
 
-  // Initialize Depth slider (with Auto max lock)
   const depthCtrl = initDualNative({
     domain: [dDomMin, dDomMax], step: 10, initial: depthRange,
     ids: { lowerRange:'depthMinR', upperRange:'depthMaxR', lowerNum:'depthMinN', upperNum:'depthMaxN' },
-    lockMaxCheckboxId: 'autoDepthMax',
     labelElId: 'depthVals',
     onChange: (r)=>{ depthRange = r; render(); }
   });
 
-  // Initialize Year slider
   const yearCtrl = initDualNative({
     domain: yearDom, step: 1, initial: yearRange,
     ids: { lowerRange:'yearMinR', upperRange:'yearMaxR', lowerNum:'yearMinN', upperNum:'yearMaxN' },
@@ -360,10 +351,6 @@
   function render(){
     const allowNA = document.getElementById("includeNA").checked;
 
-    // Enforce auto max depth at render-time too (in case someone toggled it)
-    const autoDepthMax = document.getElementById("autoDepthMax");
-    if (autoDepthMax.checked) depthRange[1] = dDomMax;
-
     const filtered = points.filter(d=>{
       const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
       const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
@@ -414,6 +401,9 @@
   svg.call(zoom).on("click", (e)=>{
     if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
   });
+
+  // Include N/A toggle
+  document.getElementById("includeNA").addEventListener("change", render);
 })();
 </script>
 </body>
