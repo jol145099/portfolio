@@ -3,271 +3,170 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>US Earthquakes (M≥4.5) — D3 Map</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<title>D3 US Earthquakes (M≥4.5) — One-Page</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
   :root {
     --bg: #0b0e14;
-    --panel: #151a22;
     --text: #e8eef7;
     --muted: #9fb0c6;
-    --accent: #9ad1ff;
-    --warn: #ffb6b6;
     --grid: #243142;
+    --panel: #0f141c;
+    --accent: #9ad1ff;
   }
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    height: 100vh; overflow: hidden;
   }
   header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--grid);
+    height: 48px; display: flex; align-items: center; gap: 10px;
+    padding: 0 12px; border-bottom: 1px solid var(--grid);
+    white-space: nowrap; overflow: hidden;
   }
-  header h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
-  header .sub { color: var(--muted); }
-
-  .wrap {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 0;
-    min-height: calc(100vh - 70px);
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .topbar {
+    position: absolute; top: 52px; left: 8px; right: 8px;
+    display: flex; gap: 10px; align-items: center; justify-content: flex-start;
+    background: rgba(15,20,28,.9); border: 1px solid var(--grid); border-radius: 10px;
+    padding: 8px 10px; z-index: 2; backdrop-filter: blur(2px);
   }
-
-  aside {
-    background: var(--panel);
-    border-right: 1px solid var(--grid);
-    padding: 16px 16px 8px;
-  }
-
-  .control {
-    margin-bottom: 16px;
-    padding: 12px;
-    border: 1px solid var(--grid);
-    border-radius: 12px;
-    background: #0f141c;
-  }
-  .control h3 {
-    margin: 0 0 10px;
-    font-size: 14px;
-    color: var(--accent);
-    letter-spacing: .2px;
-  }
-  .control label {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
-    align-items: center;
-    margin: 8px 0 12px;
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .control input[type="range"] {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-  .note { color: var(--muted); font-size: 12px; }
-
+  .ctrl { display: grid; grid-template-columns: auto 60px; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .ctrl input[type="range"] { grid-column: 1 / -1; width: 200px; }
+  .fill { flex: 1 1 auto; }
   .view {
-    position: relative;
-    overflow: hidden;
+    position: absolute; inset: 48px 0 0 0;  /* below header, fill rest */
   }
-
-  svg { display: block; width: 100%; height: 100%; }
-
-  .graticule path { fill: none; stroke: #1c2736; stroke-opacity: .6; }
+  svg { width: 100%; height: 100%; display: block; }
   .states { fill: #0d1320; stroke: #2a3a52; stroke-width: .6; }
   .state-borders { fill: none; stroke: #2a3a52; stroke-width: .6; pointer-events: none; }
-
-  .quake { stroke: #000; stroke-opacity: .5; }
-
-  .legend {
-    position: absolute;
-    left: 16px;
-    bottom: 16px;
-    background: rgba(10, 14, 20, .9);
-    border: 1px solid var(--grid);
-    border-radius: 12px;
-    padding: 10px 12px;
-    color: var(--text);
-    box-shadow: 0 8px 24px rgba(0,0,0,.25);
-    backdrop-filter: blur(2px);
+  .quake { stroke: #000; stroke-opacity: .45; }
+  .nodata { fill: #9aa0a6 !important; opacity: .9; }
+  .hud {
+    font-size: 11px; fill: var(--muted);
   }
-  .legend h4 { margin: 0 0 6px; font-size: 13px; color: var(--accent); }
-  .legend .bar { height: 12px; width: 180px; border-radius: 8px; border: 1px solid var(--grid); }
-  .legend .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
-  .legend .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-
+  .legend-card {
+    fill: rgba(10,14,20,.9); stroke: var(--grid); stroke-width: 1;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); rx: 10; ry: 10;
+  }
+  .legend-title { fill: var(--accent); font-weight: 600; font-size: 12px; }
   .tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: #0d1320;
-    color: var(--text);
-    border: 1px solid var(--grid);
-    padding: 8px 10px;
-    font-size: 12px;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.25);
-    opacity: 0;
-    transform: translate(-50%, -120%);
+    position: absolute; pointer-events: none; opacity: 0;
+    background: #0d1320; color: var(--text); border: 1px solid var(--grid);
+    padding: 8px 10px; font-size: 12px; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); transform: translate(-50%, -120%);
   }
-  .tooltip b { color: var(--accent); }
-  .tooltip .muted { color: var(--muted); }
-  .nodata { fill: #8a8a8a !important; opacity: .9; }
-  .hidden { display: none; }
 </style>
 </head>
 <body>
-<header>
-  <h1>US Earthquakes (M≥4.5) — Depth & Magnitude</h1>
-  <div class="sub">Circle size = magnitude, color = depth (km). Pan/zoom, hover for details, filter by magnitude & depth.</div>
-</header>
+  <header>
+    <h1>US Earthquakes (M≥4.5)</h1>
+    <div class="sub">Circle size = magnitude, color = depth (km). Pan/zoom, hover for details.</div>
+  </header>
 
-<div class="wrap">
-  <aside>
-    <div class="control">
-      <h3>Filters</h3>
-      <label>
-        <span>Min magnitude</span>
-        <span id="magVal">4.5</span>
-      </label>
+  <!-- compact controls on one line -->
+  <div class="topbar">
+    <div class="ctrl">
+      <span>Min magnitude</span><span id="magVal">4.5</span>
       <input id="magMin" type="range" min="4.5" max="9" step="0.1" value="4.5" />
-      <label>
-        <span>Max depth (km)</span>
-        <span id="depthVal">700</span>
-      </label>
+    </div>
+    <div class="ctrl">
+      <span>Max depth (km)</span><span id="depthVal">700</span>
       <input id="depthMax" type="range" min="0" max="700" step="10" value="700" />
-      <div class="note">Tip: drag to pan, scroll to zoom. Click the map background to reset zoom.</div>
     </div>
+    <div class="fill"></div>
+    <div class="hud">Click empty map to reset zoom</div>
+  </div>
 
-    <div class="control">
-      <h3>About the data</h3>
-      <div class="note">
-        Using <code>us_earthquakes_m4.5.csv</code> columns: <b>time</b>, <b>latitude</b>, <b>longitude</b>, <b>depth</b>, <b>mag</b>, <b>place</b>, <b>region</b>.
-        Points with missing depth are shown in gray.
-      </div>
-    </div>
-  </aside>
-
-  <div class="view" id="view">
+  <div class="view">
     <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
-
-    <!-- Legends -->
-    <div class="legend" id="legend">
-      <h4>Depth (km)</h4>
-      <div class="bar"><svg id="depthLegend" width="180" height="12"></svg></div>
-      <div class="ticks"><span id="depthMinLbl">0</span><span id="depthMidLbl">—</span><span id="depthMaxLbl">—</span></div>
-      <div class="row">
-        <svg id="sizeLegend" width="120" height="36"></svg>
-        <div class="note">Magnitude</div>
-      </div>
-    </div>
-
     <div class="tooltip" id="tooltip"></div>
   </div>
-</div>
 
 <script>
 (async function () {
-  const width = Math.max(900, window.innerWidth - 340);
-  const height = Math.max(600, window.innerHeight - 120);
-
-  const svg = d3.select("#svg")
-    .attr("viewBox", [0, 0, width, height]);
-
+  const svg = d3.select("#svg");
   const g = svg.append("g");
+  const mapG = g.append("g");
+  const ptsG = g.append("g");
+  const legendG = g.append("g");
+  const tooltip = d3.select("#tooltip");
 
-  // Projection & path
+  function sizeSVG() {
+    // fill remaining viewport under header
+    const rect = document.querySelector(".view").getBoundingClientRect();
+    svg.attr("viewBox", [0, 0, rect.width, rect.height]);
+    return { width: rect.width, height: rect.height };
+  }
+  let { width, height } = sizeSVG();
+  window.addEventListener("resize", () => {
+    ({ width, height } = sizeSVG());
+    projection.fitExtent([[20, 20], [width - 20, height - 20]], {type:"Sphere"}); // keep scale stable
+    drawLegend(); render();  // reposition legends & points
+  });
+
+  // projection & path (Albers USA fits AK/HI/PR)
   const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width, height) * 1.2);
   const path = d3.geoPath(projection);
 
-  // Load US map (states)
+  // map
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r => r.json());
   const states = topojson.feature(us, us.objects.states);
-  const borders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+  const borders = topojson.mesh(us, us.objects.states, (a,b) => a !== b);
 
-  // Base layers
-  g.append("path")
-    .datum(states)
-    .attr("class", "states")
-    .attr("d", path);
+  mapG.append("path").datum(states).attr("class", "states").attr("d", path);
+  mapG.append("path").datum(borders).attr("class", "state-borders").attr("d", path);
 
-  g.append("path")
-    .datum(borders)
-    .attr("class", "state-borders")
-    .attr("d", path);
-
-  // Load earthquakes
+  // data
   const data = await d3.csv("us_earthquakes_m4.5.csv", d => {
     const depth = d.depth === "" || d.depth == null ? null : +d.depth;
     const mag = d.mag === "" || d.mag == null ? null : +d.mag;
     const lat = +d.latitude, lon = +d.longitude;
-    return {
-      time: d.time,
-      place: d.place || "",
-      region: d.region || "",
-      depth,
-      mag,
-      lat, lon
-    };
+    return { time: d.time, place: d.place || "", region: d.region || "", depth, mag, lat, lon };
   });
-
-  // Filter to valid coordinates
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Scales
+  // scales
   const depthVals = points.map(d => d.depth).filter(v => v != null && isFinite(v));
-  const depthDomain = d3.extent(depthVals.length ? depthVals : [0, 700]);
-  // Ensure reasonable cap for deep quakes
+  const depthDomain = d3.extent(depthVals.length ? depthVals : [0,700]);
   const depthMin = Math.max(0, Math.floor((depthDomain[0] ?? 0)));
   const depthMax = Math.min(700, Math.ceil((depthDomain[1] ?? 700)));
-
-  const color = d3.scaleSequential()
-    .domain([depthMin, depthMax])
-    .interpolator(d3.interpolateTurbo); // vivid and monotonic visually
+  const color = d3.scaleSequential([depthMin, depthMax], d3.interpolateTurbo);
 
   const magVals = points.map(d => d.mag).filter(v => v != null && isFinite(v));
-  const magDomain = d3.extent(magVals.length ? magVals : [4.5, 8]);
-  const size = d3.scaleSqrt().domain(magDomain).range([1.5, 12]);
+  const magDomain = d3.extent(magVals.length ? magVals : [4.5,8]);
+  const size = d3.scaleSqrt().domain(magDomain).range([1.8, 11]); // slightly smaller to fit
 
-  // UI default values reflect data
+  // controls
   const magMinInput = document.getElementById("magMin");
   const depthMaxInput = document.getElementById("depthMax");
   const magVal = document.getElementById("magVal");
   const depthVal = document.getElementById("depthVal");
   magMinInput.min = Math.max(3.5, Math.floor((magDomain[0] ?? 4.5) * 10) / 10);
-  magMinInput.value = Math.max(4.5, magMinInput.min);
   magMinInput.max = Math.ceil((magDomain[1] ?? 9) * 10) / 10;
+  magMinInput.value = Math.max(4.5, magMinInput.min);
   magVal.textContent = magMinInput.value;
 
-  depthMaxInput.min = 0;
-  depthMaxInput.max = 700;
-  depthMaxInput.value = depthMax;
-
+  depthMaxInput.min = 0; depthMaxInput.max = 700; depthMaxInput.value = depthMax;
   depthVal.textContent = depthMaxInput.value;
-
-  // Tooltip
-  const tooltip = d3.select("#tooltip");
-
-  // Plot points group
-  const ptsG = g.append("g").attr("class", "points");
 
   function render() {
     const magCut = +magMinInput.value;
-    const depthCut = +depthMaxInput.value;
-
+    const dMax = +depthMaxInput.value;
     magVal.textContent = magCut.toFixed(1);
-    depthVal.textContent = depthCut;
+    depthVal.textContent = dMax;
 
     const filtered = points.filter(d =>
-      (d.mag == null ? false : d.mag >= magCut) &&
-      (d.depth == null ? true : d.depth <= depthCut)
+      (d.mag != null && d.mag >= magCut) &&
+      (d.depth == null || d.depth <= dMax)
     );
 
-    const sel = ptsG.selectAll("circle.quake").data(filtered, (d, i) => d.time + "|" + i);
+    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i) => d.time + "|" + i);
 
     sel.enter().append("circle")
       .attr("class", d => "quake" + (d.depth == null ? " nodata" : ""))
@@ -279,15 +178,15 @@
       .attr("fill", d => d.depth == null ? "#9aa0a6" : color(d.depth))
       .attr("fill-opacity", .85)
       .on("mousemove", (event, d) => {
-        const [x, y] = d3.pointer(event, svg.node());
+        const [x, y] = d3.pointer(event, document.querySelector(".view"));
         tooltip
           .style("left", (x + 12) + "px")
           .style("top", (y - 12) + "px")
           .style("opacity", 1)
           .html(`
-            <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span class="muted">${d.place || d.region || "Location"}</span></div>
-            <div>Depth: <b>${d.depth == null ? "N/A" : d.depth.toFixed(0)} km</b></div>
-            <div class="muted">${d.time ? new Date(d.time).toUTCString() : ""}</div>
+            <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
+            <div>Depth: <b>${d.depth == null ? "N/A" : Math.round(d.depth) + " km"}</b></div>
+            <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
           `);
       })
       .on("mouseleave", () => tooltip.style("opacity", 0));
@@ -304,92 +203,104 @@
     sel.exit().remove();
   }
 
-  // Legends — depth gradient
-  function drawDepthLegend() {
-    const w = 180, h = 12;
-    const svgL = d3.select("#depthLegend")
-      .attr("width", w)
-      .attr("height", h);
+  function drawLegend() {
+    legendG.selectAll("*").remove();
 
-    const defs = svgL.append("defs");
+    const pad = 10;
+    const cardW = Math.min(260, Math.max(220, width * 0.22));
+    const cardH = 110;
+
+    const x0 = width - cardW - 12;
+    const y0 = height - cardH - 12;
+
+    // card
+    legendG.append("rect")
+      .attr("class", "legend-card")
+      .attr("x", x0).attr("y", y0)
+      .attr("width", cardW).attr("height", cardH);
+
+    // titles
+    legendG.append("text")
+      .attr("class", "legend-title")
+      .attr("x", x0 + pad).attr("y", y0 + 18)
+      .text("Depth (km)");
+
+    // depth gradient bar
+    const barW = cardW - pad*2, barH = 12;
+    const gradId = "depthGrad";
+    const defs = legendG.append("defs");
     const grad = defs.append("linearGradient")
-      .attr("id", "depthGrad")
+      .attr("id", gradId)
       .attr("x1", "0%").attr("x2", "100%")
       .attr("y1", "0%").attr("y2", "0%");
-
     const stops = 12;
-    for (let i = 0; i <= stops; i++) {
+    for (let i=0;i<=stops;i++){
       const t = i / stops;
-      const val = depthMin + t * (depthMax - depthMin);
+      const val = depthMin + t*(depthMax-depthMin);
       grad.append("stop")
-        .attr("offset", `${t * 100}%`)
+        .attr("offset", `${t*100}%`)
         .attr("stop-color", color(val));
     }
-
-    svgL.append("rect")
-      .attr("x", 0).attr("y", 0)
-      .attr("width", w).attr("height", h)
+    legendG.append("rect")
+      .attr("x", x0 + pad).attr("y", y0 + 26)
+      .attr("width", barW).attr("height", barH)
       .attr("rx", 6).attr("ry", 6)
-      .attr("fill", "url(#depthGrad)")
+      .attr("fill", `url(#${gradId})`)
       .attr("stroke", "#243142");
 
-    d3.select("#depthMinLbl").text(depthMin);
-    d3.select("#depthMidLbl").text(Math.round((depthMin + depthMax) / 2));
-    d3.select("#depthMaxLbl").text(depthMax);
-  }
-
-  // Legends — size for magnitude
-  function drawSizeLegend() {
-    const sel = d3.select("#sizeLegend");
-    const w = +sel.attr("width"), h = +sel.attr("height");
-    sel.selectAll("*").remove();
-
-    const mags = [magDomain[0], (magDomain[0]+magDomain[1])/2, magDomain[1]].map(v => +v.toFixed(1));
-    const x = d3.scalePoint().domain(mags).range([16, w-16]);
-
-    sel.selectAll("circle").data(mags).enter().append("circle")
-      .attr("cx", d => x(d))
-      .attr("cy", h/2)
-      .attr("r", d => size(d))
-      .attr("fill", "#e6e6e6")
-      .attr("fill-opacity", .9)
-      .attr("stroke", "#000")
-      .attr("stroke-opacity", .4);
-
-    sel.selectAll("text").data(mags).enter().append("text")
-      .attr("x", d => x(d))
-      .attr("y", h-2)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#9fb0c6")
-      .attr("font-size", 11)
-      .text(d => d);
-  }
-
-  drawDepthLegend();
-  drawSizeLegend();
-  render();
-
-  // Zoom/pan
-  const zoom = d3.zoom()
-    .scaleExtent([0.8, 8])
-    .on("zoom", (event) => {
-      g.attr("transform", event.transform);
+    // depth ticks
+    const tickY = y0 + 26 + barH + 12;
+    const ticks = [depthMin, Math.round((depthMin+depthMax)/2), depthMax];
+    ticks.forEach((t,i) => {
+      const tx = x0 + pad + (barW * i/(ticks.length-1));
+      legendG.append("text")
+        .attr("x", tx).attr("y", tickY)
+        .attr("text-anchor", i===0 ? "start" : (i===ticks.length-1 ? "end" : "middle"))
+        .attr("class", "hud")
+        .text(t);
     });
 
+    // magnitude size legend
+    const mags = [magDomain[0], (magDomain[0]+magDomain[1])/2, magDomain[1]].map(v => +v.toFixed(1));
+    const baseY = tickY + 8;
+    legendG.append("text")
+      .attr("class", "legend-title")
+      .attr("x", x0 + pad).attr("y", baseY + 16)
+      .text("Magnitude");
+    const cx0 = x0 + pad + 72; // start x for circles
+    const gap = (cardW - pad - cx0 - 10) / (mags.length - 1);
+
+    mags.forEach((m, i) => {
+      const cx = cx0 + i*gap;
+      const r = size(m);
+      legendG.append("circle")
+        .attr("cx", cx).attr("cy", baseY + 26)
+        .attr("r", r).attr("fill", "#e6e6e6").attr("fill-opacity", .9)
+        .attr("stroke", "#000").attr("stroke-opacity", .4);
+      legendG.append("text")
+        .attr("x", cx).attr("y", baseY + 26 + r + 12)
+        .attr("text-anchor", "middle")
+        .attr("class", "hud")
+        .text(m);
+    });
+  }
+
+  drawLegend();
+  render();
+
+  // zoom/pan within the single page
+  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  });
   svg.call(zoom).on("click", (e) => {
     if (e.target === svg.node()) {
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
     }
   });
 
-  // Controls
-  magMinInput.addEventListener("input", render);
-  depthMaxInput.addEventListener("input", render);
-
-  // Handle resize
-  window.addEventListener("resize", () => {
-    // ViewBox scales responsively; points reposition on next render if needed
-  });
+  // update on controls
+  document.getElementById("magMin").addEventListener("input", () => { render(); });
+  document.getElementById("depthMax").addEventListener("input", () => { render(); });
 })();
 </script>
 </body>
