@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Standardized State Abbrev Tooltip</title>
+<title>D3 US Earthquakes — Canonical Location Suggestions</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -27,7 +27,6 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Dual range sliders */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{ -webkit-appearance:none; appearance:none; position:absolute; width:100%; background:none; pointer-events:none; }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
@@ -43,13 +42,12 @@
 
   .checkboxrow label{ display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; margin-top:4px; }
 
-  /* Location autocomplete */
   .locbox{ position:relative; display:grid; gap:8px; }
-  .locbox input[type="text"]{ width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--grid); background:#0f141c; color:var(--text); min-width:0; }
+  .locbox input[type="text"]{ width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--grid); background:#0f141c; color:#e8eef7; min-width:0; }
   .helper{ color:var(--muted); font-size:11px }
 
   .loc-suggest{ position:absolute; left:0; right:0; top: calc(100% + 4px); background:var(--panel); border:1px solid var(--grid); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); max-height:220px; overflow-y:auto; z-index:20; display:none; }
-  .loc-item{ padding:6px 8px; font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .loc-item{ padding:6px 8px; font-size:12px; color:#e8eef7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
   .loc-item:hover, .loc-item.active{ background:#162031; }
 
   .view{ position:relative }
@@ -69,88 +67,58 @@
 <body>
 <header>
   <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Color=Depth, Size=Magnitude. Tooltip shows City, <b>ST</b> (USPS). Location accepts “AZ” or “Arizona”.</div>
+  <div class="sub">Tooltip and suggestions are standardized to City, <b>ST</b>. Search still accepts “Arizona”, “AZ”, or phrases like “california e”.</div>
 </header>
 
 <div class="layout">
   <aside class="sidebar">
     <div class="filters">
 
-      <!-- Magnitude -->
       <div class="section">
-        <div class="row">
-          <div class="label">Magnitude</div>
-          <div class="valuespan" id="magVals">—</div>
-        </div>
+        <div class="row"><div class="label">Magnitude</div><div class="valuespan" id="magVals">—</div></div>
         <div class="slider2">
           <input id="magMinR" class="lower" type="range" step="0.1">
           <input id="magMaxR" class="upper" type="range" step="0.1">
         </div>
         <div class="row values">
-          <div class="valuebox">
-            <span>Min</span><input id="magMinN" type="number" step="0.1">
-            <span></span>
-            <span>Max</span><input id="magMaxN" type="number" step="0.1">
-          </div>
+          <div class="valuebox"><span>Min</span><input id="magMinN" type="number" step="0.1"><span></span><span>Max</span><input id="magMaxN" type="number" step="0.1"></div>
         </div>
       </div>
 
-      <!-- Depth -->
       <div class="section">
-        <div class="row">
-          <div class="label">Depth (km)</div>
-          <div class="valuespan" id="depthVals">—</div>
-        </div>
+        <div class="row"><div class="label">Depth (km)</div><div class="valuespan" id="depthVals">—</div></div>
         <div class="slider2">
           <input id="depthMinR" class="lower" type="range" step="10">
           <input id="depthMaxR" class="upper" type="range" step="10">
         </div>
         <div class="row values">
-          <div class="valuebox">
-            <span>Min</span><input id="depthMinN" type="number" step="10">
-            <span></span>
-            <span>Max</span><input id="depthMaxN" type="number" step="10">
-          </div>
+          <div class="valuebox"><span>Min</span><input id="depthMinN" type="number" step="10"><span></span><span>Max</span><input id="depthMaxN" type="number" step="10"></div>
         </div>
-        <div class="checkboxrow">
-          <label><input id="includeNA" type="checkbox"> Include N/A depth</label>
-        </div>
+        <div class="checkboxrow"><label><input id="includeNA" type="checkbox"> Include N/A depth</label></div>
       </div>
 
-      <!-- Year -->
       <div class="section">
-        <div class="row">
-          <div class="label">Year</div>
-          <div class="valuespan" id="yearVals">—</div>
-        </div>
+        <div class="row"><div class="label">Year</div><div class="valuespan" id="yearVals">—</div></div>
         <div class="slider2">
           <input id="yearMinR" class="lower" type="range" step="1">
           <input id="yearMaxR" class="upper" type="range" step="1">
         </div>
         <div class="row values">
-          <div class="valuebox">
-            <span>Min</span><input id="yearMinN" type="number" step="1">
-            <span></span>
-            <span>Max</span><input id="yearMaxN" type="number" step="1">
-          </div>
+          <div class="valuebox"><span>Min</span><input id="yearMinN" type="number" step="1"><span></span><span>Max</span><input id="yearMaxN" type="number" step="1"></div>
         </div>
       </div>
 
-      <!-- Location -->
       <div class="section">
-        <div class="row">
-          <div class="label">Location</div>
-          <div class="valuespan helper">Exact “City, ST” (AZ/Arizona)</div>
-        </div>
+        <div class="row"><div class="label">Location</div><div class="valuespan helper">Exact “City, ST” (AZ/Arizona)</div></div>
         <div class="locbox">
-          <input id="locInput" type="text" placeholder="Type: Phoenix, AZ or Phoenix, Arizona" autocomplete="off">
+          <input id="locInput" type="text" placeholder="Phoenix, AZ or Phoenix, Arizona or 'california e'…" autocomplete="off">
           <div id="locSuggest" class="loc-suggest"></div>
           <div class="helper">Shows up to 10 matches. Click to apply. Clear to show all.</div>
         </div>
       </div>
 
       <div class="section" style="padding-top:4px;">
-        <div class="label" style="opacity:.85;">Tip: Click empty map area to reset zoom.</div>
+        <div class="label" style="opacity:.85;">Tip: click empty map to reset zoom.</div>
       </div>
 
     </div>
@@ -164,7 +132,7 @@
 
 <script>
 (async function () {
-  /* ------------ State maps (abbr <-> full) ------------ */
+  /* ---------------- State maps ---------------- */
   const STATE_ABBR_TO_FULL = {
     AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas", CA:"California", CO:"Colorado",
     CT:"Connecticut", DE:"Delaware", FL:"Florida", GA:"Georgia", HI:"Hawaii", ID:"Idaho",
@@ -180,7 +148,6 @@
   };
   const STATE_FULL_TO_ABBR = Object.fromEntries(Object.entries(STATE_ABBR_TO_FULL).map(([k,v])=>[v.toLowerCase(), k]));
 
-  // Normalize a state token to abbr/full
   function normalizeStateToken(token){
     if(!token) return {abbr:"", full:""};
     const t = token.trim();
@@ -190,7 +157,7 @@
     return { abbr:"", full:"" };
   }
 
-  // Find a state name anywhere in a string (handles “California earthquake”)
+  // Find a state name anywhere in a string (handles “… California Earthquake”)
   function findStateInText(text){
     if (!text) return null;
     const t = text.toLowerCase();
@@ -206,6 +173,12 @@
     return best ? { abbr: best.abbr, full: best.full } : null;
   }
 
+  // Strip leading "The 1933 " etc. from captured city tokens
+  function cleanCityToken(s){
+    if (!s) return s;
+    return s.replace(/^\s*(?:the\s+)?\d{3,4}\s+/i, "").trim();
+  }
+
   // Tooltip label: City, ST; or ST; else fallback
   function displayLabel(d){
     if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
@@ -215,7 +188,7 @@
     return "Location";
   }
 
-  /* ------------------- Layout & map ------------------- */
+  /* ---------------- Layout & map ---------------- */
   const svg = d3.select("#svg");
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
@@ -239,7 +212,7 @@
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  /* ------------------- Data ------------------- */
+  /* ---------------- Data ---------------- */
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
     const depth = (d.depth===""||d.depth==null)?null:+d.depth;
     const mag   = (d.mag===""  ||d.mag==null)?null:+d.mag;
@@ -249,44 +222,46 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Parse “City, ST” robustly, with fallbacks (“California earthquake” -> CA)
+  // Parse City/ST robustly (accept trailing “Earthquake”; strip “The #### ” from city)
   function cityStateFromPlace(d){
     const place = (d.place||"").trim();
     const region = (d.region||"").trim();
 
-    // "... of City, State"
-    let m = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})/i);
+    // "... of City, State [Earthquake]"
+    let m = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})(?:\s+Earthquake)?\s*$/i);
     if (m){
-      const city = m[1].trim(); const st = normalizeStateToken(m[2]);
+      const city = cleanCityToken(m[1]);
+      const st   = normalizeStateToken(m[2]);
       if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
-    // "City, State"
-    m = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})\s*$/);
+    // "City, State [Earthquake]"
+    m = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})(?:\s+Earthquake)?\s*$/i);
     if (m){
-      const city = m[1].trim(); const st = normalizeStateToken(m[2]);
+      const city = cleanCityToken(m[1]);
+      const st   = normalizeStateToken(m[2]);
       if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
-    // Region "City, State" or just a state
+    // Region like "City, State" or just a state
     if (region){
       const parts = region.split(",").map(s=>s.trim());
       if (parts.length===2){
-        const city = parts[0]; const st = normalizeStateToken(parts[1]);
+        const city = cleanCityToken(parts[0]);
+        const st   = normalizeStateToken(parts[1]);
         return { label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full };
       } else if (parts.length===1){
         const st = normalizeStateToken(parts[0]);
         if (st.abbr) return { label: st.abbr, city:"", stAbbr:st.abbr, stFull:st.full };
       }
     }
-    // NEW: match “California earthquake”, “Northern California”, etc.
-    let found = findStateInText(place) || findStateInText(region);
-    if (found){
-      return { label: found.abbr, city:"", stAbbr:found.abbr, stFull:found.full };
-    }
-    // Last resort: take last two comma parts from place
+    // Any state name appearing anywhere
+    const found = findStateInText(place) || findStateInText(region);
+    if (found) return { label: found.abbr, city:"", stAbbr:found.abbr, stFull:found.full };
+
+    // Last resort: last two comma parts
     const tail = place.split(',').map(s=>s.trim());
     if (tail.length>=2){
       const st = normalizeStateToken(tail[tail.length-1]);
-      const city = tail[tail.length-2].replace(/.*of\s+/i,'').trim();
+      const city = cleanCityToken(tail[tail.length-2].replace(/.*of\s+/i,''));
       if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
     return {label:"", city:"", stAbbr:"", stFull:""};
@@ -294,35 +269,43 @@
 
   points.forEach(d => {
     const cs = cityStateFromPlace(d);
-    d.locLabel = cs.label;      // canonical text (City, ST) or ST
+    d.locLabel = cs.label;      // canonical display (City, ST) or ST
     d.locCity  = cs.city;
     d.locStAbbr= cs.stAbbr;
     d.locStFull= cs.stFull;
   });
 
-  /* ------------- Build location list for autocomplete ------------- */
-  const locMap = new Map(); // label -> {label,count,forms:Set, stAbbr, stFull}
+  /* ------------- Build location entries (canonical label shown) ------------- */
+  const locMap = new Map(); // key: canonical label -> {label,count,forms:Set, stAbbr, stFull}
   for (const d of points){
-    if (!d.locLabel) continue;
-    const key = d.locLabel;
+    if (!d.locLabel) continue;               // only keep canonicalized ones
+    const key = d.locLabel;                  // what we will DISPLAY
+    const rawPlace = (d.place||"").toLowerCase();
+    const rawRegion= (d.region||"").toLowerCase();
     const labelLower = key.toLowerCase();
     const withFull = d.locCity ? `${d.locCity}, ${d.locStFull}` : d.locStFull;
-    const withFullLower = (withFull || key).toLowerCase();
+    const withFullLower = (withFull||"").toLowerCase();
 
     if (!locMap.has(key)){
-      locMap.set(key, { label:key, count:1, forms:new Set([labelLower, withFullLower]), stAbbr:d.locStAbbr||"", stFull:d.locStFull||"" });
+      locMap.set(key, {
+        label:key, count:1,
+        forms:new Set([labelLower, withFullLower, rawPlace, rawRegion]), // search over raw text too
+        stAbbr:d.locStAbbr||"", stFull:d.locStFull||""
+      });
     } else {
       const e = locMap.get(key);
       e.count++;
       e.forms.add(labelLower);
-      e.forms.add(withFullLower);
+      if (withFullLower) e.forms.add(withFullLower);
+      if (rawPlace) e.forms.add(rawPlace);
+      if (rawRegion) e.forms.add(rawRegion);
     }
   }
   const locEntries = Array.from(locMap.values())
     .map(e => ({ label:e.label, count:e.count, forms:Array.from(e.forms), stAbbr:e.stAbbr, stFull:e.stFull }))
     .sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
 
-  /* ------------------- Scales & UI state ------------------- */
+  /* ---------------- Scales & UI state ---------------- */
   const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
   const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
   const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
@@ -336,7 +319,7 @@
   const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
 
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
-  let locExact = ""; // exact canonical label ("City, ST") or "ST"
+  let locExact = ""; // exact canonical label to filter (City, ST or ST)
 
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
@@ -353,20 +336,11 @@
     hiN.onchange=()=>sync(+loN.value,+hiN.value);
     sync(domain[0],domain[1]);
   }
-  initDual({ domain:magDom, step:0.1,
-    ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
-    labelElId:'magVals', onChange:r=>{ magRange=r; render(); }
-  });
-  initDual({ domain:[dDomMin,dDomMax], step:10,
-    ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},
-    labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }
-  });
-  initDual({ domain:yearDom, step:1,
-    ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},
-    labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }
-  });
+  initDual({ domain:magDom, step:0.1, ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'}, labelElId:'magVals', onChange:r=>{ magRange=r; render(); }});
+  initDual({ domain:[dDomMin,dDomMax], step:10, ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'}, labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }});
+  initDual({ domain:yearDom, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
 
-  /* ---------------- Autocomplete (AZ / Arizona; max 10) ---------------- */
+  /* ---------------- Autocomplete (shows canonical label) ---------------- */
   const locInput = document.getElementById("locInput");
   const locPanel = document.getElementById("locSuggest");
   let activeIdx = -1;
@@ -391,34 +365,27 @@
     locPanel.innerHTML = "";
     if (!qTrim){ closePanel(); return; }
 
+    // If user typed just a state (abbr or full), show only that state's locations
     const abbrOnly = STATE_ABBR_TO_FULL[qTrim.toUpperCase()] ? qTrim.toUpperCase() : "";
     const fullOnlyAbbr = STATE_FULL_TO_ABBR[qLower] || "";
 
     let results = [];
 
     if (abbrOnly || fullOnlyAbbr){
-      const ab = abbrOnly || fullOnlyAbbr; // USPS code
+      const ab = abbrOnly || fullOnlyAbbr;
       results = locEntries.filter(e => e.stAbbr === ab).slice(0, 10);
     } else {
       const qCanon = canonQuery(qTrim).toLowerCase();
       const starts = [], contains = [];
 
       for (const e of locEntries){
-        const city = e.label.split(",")[0].trim().toLowerCase();
-        const stAb = (e.stAbbr||"").toLowerCase();
-        const stFull = (e.stFull||"").toLowerCase();
+        // Search across forms: canonical, "City, State" (full), raw place & region
+        const matchedStarts = e.forms.some(f => f && f.startsWith(qCanon)) ||
+                              e.forms.some(f => f && f.startsWith(qLower));
+        const matchedContains = !matchedStarts && e.forms.some(f => f && f.includes(qLower));
 
-        const startsMatch = city.startsWith(qLower) ||
-                            (`${city}, ${stAb}`).startsWith(qCanon) ||
-                            (`${city}, ${stFull}`).startsWith(qLower);
-        const includesMatch = (!startsMatch) && (
-          city.includes(qLower) ||
-          (", " + stAb).includes(", " + qLower) ||
-          (", " + stFull).includes(", " + qLower)
-        );
-
-        if (startsMatch) starts.push(e);
-        else if (includesMatch) contains.push(e);
+        if (matchedStarts) starts.push(e);
+        else if (matchedContains) contains.push(e);
 
         if (starts.length >= 10) break;
       }
@@ -430,7 +397,7 @@
     for (const {label,count} of results){
       const div = document.createElement("div");
       div.className = "loc-item";
-      div.textContent = label;         // canonical "City, ST" or "ST"
+      div.textContent = label;   // ALWAYS canonical display: "City, ST" or "ST"
       div.title = `${label} (${count})`;
       div.addEventListener("mousedown", (e)=>{ e.preventDefault(); applyLocation(label); });
       locPanel.appendChild(div);
@@ -441,7 +408,7 @@
 
   function applyLocation(label){
     locInput.value = label;
-    locExact = label; // canonical "City, ST" (or "ST")
+    locExact = label; // canonical label
     closePanel();
     render();
   }
@@ -481,7 +448,7 @@
     if (!document.querySelector(".locbox").contains(e.target)) closePanel();
   });
 
-  /* ---------------- Legend ---------------- */
+  /* ---------------- Scales/legend/render/zoom ---------------- */
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad = 10;
@@ -527,7 +494,6 @@
     });
   }
 
-  /* ---------------- Render ---------------- */
   function render(){
     const allowNA = document.getElementById("includeNA").checked;
 
@@ -575,7 +541,6 @@
   drawLegend();
   render();
 
-  /* ---------------- Zoom ---------------- */
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
     zoomLayer.attr("transform", ev.transform);
   });
