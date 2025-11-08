@@ -228,7 +228,7 @@ function renderScatter(rows) {
       });
     }
 
-    dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : 'var(--ucsd-navy)')
+    dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : #006A96)
         .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.85);
 
     selCount.textContent = `Selected: ${fmt(sel.length)}`;
