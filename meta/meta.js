@@ -109,10 +109,10 @@ function renderStats(rows) {
 
   minmax.innerHTML = `
     <div class="card"><strong>Min Lines (File)</strong>
-      <div>${minFile?.file ?? '—'}</div><em>${fmt(minFile?.lines ?? 0)}</em>
+      <div>${minFile?.file ?? '—'}</div><em>${fmt(minFile?.lines ?? 0)} lines</em>
     </div>
     <div class="card"><strong>Max Lines (File)</strong>
-      <div>${maxFile?.file ?? '—'}</div><em>${fmt(maxFile?.lines ?? 0)}</em>
+      <div>${maxFile?.file ?? '—'}</div><em>${fmt(maxFile?.lines ?? 0)} lines</em>
     </div>
   `;
 }

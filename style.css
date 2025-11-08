@@ -512,14 +512,14 @@ html[data-theme="dark"] .pill {
   padding: .6rem .8rem;
 }
 .stats-grid .card em {
-  display: block; opacity: .7; margin-top: .2rem;
+  display: block; opacity: .7; margin-top: .2rem; font-style: italic; color:#006A96;
 }
 .stats-grid .mini { padding: .5rem .6rem; }
 
 .scatter-controls { display:flex; gap:.5rem; align-items:center; margin:.5rem 0 1rem; }
 .pill {
   display:inline-block; padding:.2rem .5rem; border-radius:.6rem;
-  background: var(--accent-weak-bg); color: #00C6D7; border: 1px solid var(--border);
+  background:#00C6D7 ; color:white ; border: 1px solid var(--border); font-style: bold;
 }
 
 #scatter .x-axis text,
