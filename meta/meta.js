@@ -66,7 +66,6 @@ function renderStats(rows) {
   const distinctDays = new Set(rows.map(d => d.dt.toDateString())).size;
   const fileTotals = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.file)
                        .map(([file, lines]) => ({ file, lines }));
-  const longestFile = d3.greatest(fileTotals, d => d.lines);
 
   const byHour  = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.hour)
                     .map(([hour, lines]) => ({ hour, lines }));
@@ -78,16 +77,12 @@ function renderStats(rows) {
   const peakDow = d3.greatest(byDow, d => d.lines);
 
   extras.innerHTML = `
-    <div class="card"><strong>Days worked</strong><div>${fmt(distinctDays)}</div></div>
-    <div class="card"><strong>Longest File (most lines)</strong>
-      <div title="${longestFile?.file ?? ''}">${longestFile?.file ?? '—'}</div>
-      <em>${fmt(longestFile?.lines ?? 0)} lines</em>
-    </div>
-    <div class="card"><strong>Peak hour</strong>
+    <div class="card"><strong>Days Worked</strong><div>${fmt(distinctDays)}</div></div>
+    <div class="card"><strong>Peak Hour</strong>
       <div>${peakHour ? `${peakHour.hour}:00` : '—'}</div>
       <em>${fmt(peakHour?.lines ?? 0)} lines</em>
     </div>
-    <div class="card"><strong>Peak weekday</strong>
+    <div class="card"><strong>Peak Weekday</strong>
       <div>${peakDow ? dayNames[peakDow.dow] : '—'}</div>
       <em>${fmt(peakDow?.lines ?? 0)} lines</em>
     </div>
@@ -156,7 +151,7 @@ function renderScatter(rows) {
 
   const xAxis = d3.axisBottom(x)
     .tickValues(uniqueDays)
-    .tickFormat(d3.timeFormat('%b %d'));
+    .tickFormat(d3.timeFormat('%m/%d'));
 
   const yAxis = d3.axisLeft(y).ticks(8).tickFormat(h => `${h}:00`);
 

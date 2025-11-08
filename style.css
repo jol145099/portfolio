@@ -519,7 +519,7 @@ html[data-theme="dark"] .pill {
 .scatter-controls { display:flex; gap:.5rem; align-items:center; margin:.5rem 0 1rem; }
 .pill {
   display:inline-block; padding:.2rem .5rem; border-radius:.6rem;
-  background: var(--accent-weak-bg); color: var(--text); border: 1px solid var(--border);
+  background: var(--accent-weak-bg); color: #00C6D7; border: 1px solid var(--border);
 }
 
 #scatter .x-axis text,
