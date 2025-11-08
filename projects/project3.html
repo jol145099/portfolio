@@ -3,16 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Colored Slider Handles</title>
+<title>D3 US Earthquakes — Left Filters + Fitting Legend</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
-  :root {
-    --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6;
-    --mag-color:#f08c00;   /* orange for magnitude */
-    --depth-color:#1fa8ff; /* blue for depth */
-    --year-color:#9b5de5;  /* purple for year */
-  }
+  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; }
 
   *{ box-sizing:border-box }
   body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
@@ -21,9 +16,11 @@
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
+  /* --- Layout: left sidebar + map --- */
   .layout{
     position:absolute; inset:52px 0 0 0;
-    display:grid; grid-template-columns: 340px 1fr;
+    display:grid; grid-template-columns: 340px 1fr; /* adjust width if needed */
+    gap:0;
   }
   @media (max-width:900px){ .layout{ grid-template-columns: 280px 1fr; } }
 
@@ -32,6 +29,7 @@
     background:rgba(15,20,28,.94);
     padding:16px 14px;
     overflow-y:auto;
+    overflow-x:hidden; /* no horizontal scroll */
   }
 
   .filters{ display:grid; gap:16px }
@@ -42,7 +40,7 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Dual sliders */
+  /* Slim dual sliders (stacked range inputs) */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{
     -webkit-appearance:none; appearance:none;
@@ -50,8 +48,6 @@
   }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
   .slider2 input[type="range"]::-moz-range-track{ height:5px; border-radius:999px; background:#dfe8f6; }
-
-  /* Default slider thumb */
   .slider2 input[type="range"]::-webkit-slider-thumb{
     -webkit-appearance:none; appearance:none;
     width:12px; height:12px; border-radius:50%;
@@ -62,42 +58,16 @@
     width:12px; height:12px; border-radius:50%;
     background:#ffffff; border:2px solid var(--accent); pointer-events:auto;
   }
-
   .slider2 input.lower{ z-index:1 }
   .slider2 input.upper{ z-index:2 }
 
-  /* ==== COLORED SLIDER HANDLES ==== */
-  .slider2.mag input[type="range"]::-webkit-slider-thumb {
-    background: var(--mag-color);
-    border-color: var(--mag-color);
-  }
-  .slider2.mag input[type="range"]::-moz-range-thumb {
-    background: var(--mag-color);
-    border-color: var(--mag-color);
-  }
+  /* Min/Max row compact and flush under slider */
+  .row.values{ grid-template-columns: 1fr; }
+  .row.values .label{ display:none; }
 
-  .slider2.depth input[type="range"]::-webkit-slider-thumb {
-    background: var(--depth-color);
-    border-color: var(--depth-color);
-  }
-  .slider2.depth input[type="range"]::-moz-range-thumb {
-    background: var(--depth-color);
-    border-color: var(--depth-color);
-  }
-
-  .slider2.year input[type="range"]::-webkit-slider-thumb {
-    background: var(--year-color);
-    border-color: var(--year-color);
-  }
-  .slider2.year input[type="range"]::-moz-range-thumb {
-    background: var(--year-color);
-    border-color: var(--year-color);
-  }
-
-  /* Min/Max number boxes */
   .valuebox{
     display:grid;
-    grid-template-columns: auto 70px 20px auto 70px;
+    grid-template-columns: auto 70px 1fr auto 70px;
     align-items:center;
     gap:6px;
     color:var(--muted);
@@ -108,9 +78,11 @@
     border:1px solid var(--grid); border-radius:6px;
     padding:3px 6px; width:70px;
   }
-  .valuebox label{
-    grid-column:1 / -1;
-    justify-self:start;
+
+  .checkboxrow label{
+    display:flex; align-items:center; gap:6px;
+    color:var(--muted); font-size:11.5px;
+    margin-top:4px;
   }
 
   .view{ position:relative }
@@ -129,11 +101,12 @@
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Color = Depth, Size = Magnitude. Filter earthquakes using sliders on the left.</div>
+  <h1>US Earthquakes — Left Filters</h1>
+  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom the map; filter on left.</div>
 </header>
 
 <div class="layout">
+  <!-- Sidebar filters -->
   <aside class="sidebar">
     <div class="filters">
 
@@ -143,7 +116,7 @@
           <div class="label">Magnitude</div>
           <div class="valuespan" id="magVals">—</div>
         </div>
-        <div class="slider2 mag">
+        <div class="slider2">
           <input id="magMinR" class="lower" type="range" step="0.1">
           <input id="magMaxR" class="upper" type="range" step="0.1">
         </div>
@@ -162,7 +135,7 @@
           <div class="label">Depth (km)</div>
           <div class="valuespan" id="depthVals">—</div>
         </div>
-        <div class="slider2 depth">
+        <div class="slider2">
           <input id="depthMinR" class="lower" type="range" step="10">
           <input id="depthMaxR" class="upper" type="range" step="10">
         </div>
@@ -173,12 +146,8 @@
             <span>Max</span><input id="depthMaxN" type="number" step="10">
           </div>
         </div>
-        <div class="row values" style="margin-top:-4px;">
-          <div class="valuebox">
-            <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px;">
-              <input id="includeNA" type="checkbox"> Include N/A depth
-            </label>
-          </div>
+        <div class="checkboxrow">
+          <label><input id="includeNA" type="checkbox"> Include N/A depth</label>
         </div>
       </div>
 
@@ -188,22 +157,27 @@
           <div class="label">Year</div>
           <div class="valuespan" id="yearVals">—</div>
         </div>
-        <div class="slider2 year">
+        <div class="slider2">
           <input id="yearMinR" class="lower" type="range" step="1">
           <input id="yearMaxR" class="upper" type="range" step="1">
         </div>
         <div class="row values">
           <div class="valuebox">
-            <span>Min</span><input id="yearMinN" type="number" step="1">
+            <span>Start</span><input id="yearMinN" type="number" step="1">
             <span></span>
-            <span>Max</span><input id="yearMaxN" type="number" step="1">
+            <span>End</span><input id="yearMaxN" type="number" step="1">
           </div>
         </div>
+      </div>
+
+      <div class="section" style="padding-top:4px;">
+        <div class="label" style="opacity:.85;">Tip: click empty map to reset zoom.</div>
       </div>
 
     </div>
   </aside>
 
+  <!-- Map + legend -->
   <div class="view">
     <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="tooltip" id="tooltip"></div>
@@ -225,8 +199,9 @@
     return { width:r.width, height:r.height };
   }
   let { width, height } = sizeSVG();
-  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); render(); });
+  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); drawLegend(); render(); });
 
+  // Projection & map
   const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width,height)*1.2);
   const path = d3.geoPath(projection);
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
@@ -235,15 +210,17 @@
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
+  // Data
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
     const depth = (d.depth===""||d.depth==null)?null:+d.depth;
-    const mag   = (d.mag===""||d.mag==null)?null:+d.mag;
+    const mag   = (d.mag===""  ||d.mag==null)?null:+d.mag;
     const lat=+d.latitude, lon=+d.longitude;
     const year = d.time ? new Date(d.time).getUTCFullYear() : null;
     return { time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon };
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
+  // Domains
   const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
   const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
   const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
@@ -253,13 +230,15 @@
   const magDom  = d3.extent(magVals.length ? magVals : [4.5,8]);
 
   const yearVals = points.map(d=>d.year).filter(y=>y!=null && isFinite(y));
-  const yearDom  = d3.extent(yearVals.length ? yearVals : [1950,2025]);
+  const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
-  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
+  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]); // map symbol sizes
 
+  // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
 
+  // Dual-range initializer
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
@@ -267,7 +246,8 @@
     [loR.max,hiR.max,loN.max,hiN.max]=[domain[1],domain[1],domain[1],domain[1]];
     [loR.step,hiR.step,loN.step,hiN.step]=[step,step,step,step];
     const clamp=v=>Math.min(domain[1],Math.max(domain[0],step>=1?Math.round(v/step)*step:Math.round(v*10)/10));
-    const sync=(a,b,notify=true)=>{a=clamp(a);b=clamp(b);if(a>b)[a,b]=[b,a];[loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];if(label){const f=step===0.1?x=>(+x).toFixed(1):x=>x;label.textContent=`${f(a)} – ${f(b)}`;}if(notify)onChange([a,b]);};
+    const paint=(a,b)=>{const p=v=>100*(v-domain[0])/(domain[1]-domain[0]);loR.style.background=`linear-gradient(to right,#dfe8f6 ${p(domain[0])}%,var(--accent) ${p(a)}%,var(--accent) ${p(b)}%,#dfe8f6 ${p(domain[1])}%)`;};
+    const sync=(a,b,notify=true)=>{a=clamp(a);b=clamp(b);if(a>b)[a,b]=[b,a];[loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];paint(a,b);if(label){const f=step===0.1?x=>(+x).toFixed(1):x=>x;label.textContent=`${f(a)} – ${f(b)}`;}if(notify)onChange([a,b]);};
     loR.oninput=()=>sync(+loR.value,+hiR.value);
     hiR.oninput=()=>sync(+loR.value,+hiR.value);
     loN.onchange=()=>sync(+loN.value,+hiN.value);
@@ -275,38 +255,176 @@
     sync(domain[0],domain[1]);
   }
 
-  initDual({domain:magDom,step:0.1,ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},labelElId:'magVals',onChange:r=>{magRange=r;render();}});
-  initDual({domain:[dDomMin,dDomMax],step:10,ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},labelElId:'depthVals',onChange:r=>{depthRange=r;render();}});
-  initDual({domain:yearDom,step:1,ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},labelElId:'yearVals',onChange:r=>{yearRange=r;render();}});
+  // Initialize sliders
+  initDual({
+    domain:magDom, step:0.1,
+    ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
+    labelElId:'magVals',
+    onChange:r=>{ magRange=r; render(); }
+  });
+  initDual({
+    domain:[dDomMin,dDomMax], step:10,
+    ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},
+    labelElId:'depthVals',
+    onChange:r=>{ depthRange=r; render(); }
+  });
+  initDual({
+    domain:yearDom, step:1,
+    ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},
+    labelElId:'yearVals',
+    onChange:r=>{ yearRange=r; render(); }
+  });
 
-  function render(){
-    const allowNA=document.getElementById("includeNA").checked;
-    const filtered=points.filter(d=>{
-      const magOK=(d.mag!=null&&d.mag>=magRange[0]&&d.mag<=magRange[1]);
-      const yearOK=(d.year!=null&&d.year>=yearRange[0]&&d.year<=yearRange[1]);
-      const depthOK=d.depth==null?allowNA:(d.depth>=depthRange[0]&&d.depth<=depthRange[1]);
-      return magOK&&yearOK&&depthOK;
+  // -------- Legend (uses its own, smaller size scale so circles fit) --------
+  function drawLegend(){
+    legendG.selectAll("*").remove();
+
+    const pad = 10;
+    const cardW = Math.min(260, Math.max(220, width * 0.22));
+    const depthBarH = 12;
+
+    // Smaller radius just for legend; tweak [3, 9] to taste
+    const sizeLegend = d3.scaleSqrt().domain(size.domain()).range([3, 9]);
+    const maxR = sizeLegend(size.domain()[1]);
+
+    // Compute card height so nothing overflows
+    const cardH = 26               // "Depth (km)" title line
+                + depthBarH + 12   // bar + gap
+                + 16               // depth ticks labels
+                + 8                // gap before "Magnitude"
+                + 26               // "Magnitude" title & top gap
+                + maxR + 12 + 8;   // circle row (radius) + labels + bottom margin
+
+    const x0 = width - cardW - 12;
+    const y0 = height - cardH - 12;
+
+    // Card
+    legendG.append("rect")
+      .attr("class","legend-card")
+      .attr("x",x0).attr("y",y0).attr("width",cardW).attr("height",cardH);
+
+    // Depth title
+    legendG.append("text")
+      .attr("class","legend-title")
+      .attr("x",x0+pad).attr("y",y0+18)
+      .text("Depth (km)");
+
+    // Depth gradient bar
+    const barW = cardW - pad*2;
+    const gradId = "depthGrad";
+    const defs = legendG.append("defs");
+    const grad = defs.append("linearGradient")
+      .attr("id",gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
+    const stops = 12;
+    const [d0, d1] = color.domain();
+    for (let i=0;i<=stops;i++){
+      const t=i/stops, val=d0 + t*(d1-d0);
+      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
+    }
+    legendG.append("rect")
+      .attr("x",x0+pad).attr("y",y0+26)
+      .attr("width",barW).attr("height",depthBarH)
+      .attr("rx",6).attr("ry",6)
+      .attr("fill",`url(#${gradId})`).attr("stroke","#243142");
+
+    // Depth ticks
+    const tickY = y0 + 26 + depthBarH + 12;
+    [d0, Math.round((d0+d1)/2), d1].forEach((t,i)=>{
+      const tx = x0 + pad + (barW * i/2);
+      legendG.append("text").attr("x",tx).attr("y",tickY)
+        .attr("text-anchor", i===0?'start':i===2?'end':'middle')
+        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
+        .attr("font-size",11).text(t);
     });
 
-    const sel=ptsG.selectAll("circle.quake").data(filtered,(d,i)=>d.time+"|"+i);
+    // Magnitude title
+    const magTitleY = tickY + 8 + 16;
+    legendG.append("text")
+      .attr("class","legend-title")
+      .attr("x",x0+pad).attr("y",magTitleY)
+      .text("Magnitude");
+
+    // Magnitude circles using legend radius
+    const mags = [size.domain()[0], (size.domain()[0]+size.domain()[1])/2, size.domain()[1]].map(v=>+v.toFixed(1));
+
+    // Horizontal padding by maxR to keep circles inside card
+    const cxLeft  = x0 + pad + maxR + 4;
+    const cxRight = x0 + cardW - pad - maxR - 4;
+    const gap = (cxRight - cxLeft) / (mags.length - 1);
+
+    const circlesY = magTitleY + 10 + 16; // a bit below the title
+    mags.forEach((m,i)=>{
+      const cx = cxLeft + i*gap;
+      const r = sizeLegend(m);
+      legendG.append("circle")
+        .attr("cx",cx).attr("cy",circlesY).attr("r",r)
+        .attr("fill","#e6e6e6").attr("fill-opacity",.9)
+        .attr("stroke","#000").attr("stroke-opacity",.4);
+      legendG.append("text")
+        .attr("x",cx).attr("y",circlesY + r + 12).attr("text-anchor","middle")
+        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
+        .attr("font-size",11).text(m);
+    });
+  }
+  // -------------------------------------------------------------------------
+
+  function render(){
+    const allowNA = document.getElementById("includeNA").checked; // default unchecked
+
+    const filtered = points.filter(d=>{
+      const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
+      const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
+      const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
+      return magOK && yearOK && depthOK;
+    });
+
+    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=>d.time+"|"+i);
 
     sel.enter().append("circle")
-      .attr("class",d=>"quake"+(d.depth==null?" nodata":""))
-      .attr("r",d=>size(d.mag??magDom[0]))
-      .attr("transform",d=>{
-        const p=projection([d.lon,d.lat]);
-        return p?`translate(${p[0]},${p[1]})`:"translate(-999,-999)";
+      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("transform", d => {
+        const p = projection([d.lon, d.lat]);
+        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
       })
-      .attr("fill",d=>d.depth==null?"#9aa0a6":color(d.depth))
-      .attr("fill-opacity",.85)
-      .on("mousemove",(event,d)=>{
-        const [x,y]=d3.pointer(event,document.querySelector(".view"));
+      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
+      .attr("fill-opacity", .85)
+      .on("mousemove", (event, d) => {
+        const [x,y] = d3.pointer(event, document.querySelector(".view"));
         tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
-          <div><b>${d.mag?.toFixed(1)??"M?"}</b> — <span style="color:var(--muted)">${d.place||d.region||"Location"}</span></div>
-          <div>Depth: <b>${d.depth==null?"N/A":Math.round(d.depth)+" km"}</b></div>
-          <div style="color:var(--muted)">${d.time?new Date(d.time).toUTCString():""}</div>
+          <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
+          <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
+          <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
         `);
       })
-      .on("mouseleave",()=>tooltip.style("opacity",0));
+      .on("mouseleave", ()=> tooltip.style("opacity", 0));
 
-    sel.attr("r",d=>size
+    sel
+      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
+      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+      .attr("transform", d => {
+        const p = projection([d.lon, d.lat]);
+        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
+      });
+
+    sel.exit().remove();
+  }
+
+  drawLegend();
+  render();
+
+  // Zoom (legend stays fixed)
+  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
+    zoomLayer.attr("transform", ev.transform);
+  });
+  svg.call(zoom).on("click", (e)=>{
+    if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  });
+
+  // Checkbox re-filter
+  document.getElementById("includeNA").addEventListener("change", render);
+})();
+</script>
+</body>
+</html>
