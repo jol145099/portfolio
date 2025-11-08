@@ -39,6 +39,7 @@
   .row.values{ grid-template-columns: 1fr; }
   .row.values .label{ display:none; }
   .valuebox{ display:grid; grid-template-columns: auto 65px 1fr auto 65px; align-items:center; gap:2px; color:var(--muted); font-size:11.5px; }
+  
   input[type="number"]{ background:#0f141c; color:#e8eef7; border:1px solid var(--grid); margin-left: 5px; text-align: center; border-radius:6px; padding:3px 6px; width:60px; }
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0;}
@@ -72,6 +73,13 @@
   .legend-title{ fill:#9ad1ff; font-weight:600; font-size:12px }
 
   .tooltip{ position:absolute; pointer-events:none; opacity:0; background:#0d1320; color:#e8eef7; border:1px solid var(--grid); padding:8px 10px; font-size:12px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); transform:translate(-50%,-120%) }
+
+  #resetBtn {width: 100%;padding: 8px 0; background-color: #1e2a3a; color: #cfe3ff; font-size: 13px; font-weight: 600; border: 1px solid #3b4a5c; border-radius: 6px; cursor: pointer; transition: all 0.2s ease-in-out;}
+
+  #resetBtn:hover {background-color: #2b3c52; color: #ffffff; border-color: #4d6480;}
+
+  #resetBtn:active {transform: scale(0.97);}
+
 </style>
 </head>
 <body>
@@ -137,7 +145,11 @@
       </div>
 
       <div class="section" style="padding-top:4px;">
-        <div class="label" style="opacity:.85;">Tip: click empty map to reset zoom.</div>
+        <div class="label" style="opacity:.85;">Note: Click empty map to reset zoom.</div>
+      </div>
+
+      <div class="section" style="margin-top: 10px;">
+        <button id="resetBtn">🔄 Reset Filters</button>
       </div>
 
     </div>
@@ -569,6 +581,35 @@
   drawLegend();
   render();
 
+  // ----- Reset Filters Button Logic -----
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    // Reset magnitude sliders
+    d3.select("#magMinR").property("value", size.domain()[0]);
+    d3.select("#magMaxR").property("value", size.domain()[1]);
+    d3.select("#magMinN").property("value", size.domain()[0]);
+    d3.select("#magMaxN").property("value", size.domain()[1]);
+
+    // Reset depth sliders
+    d3.select("#depthMinR").property("value", color.domain()[0]);
+    d3.select("#depthMaxR").property("value", color.domain()[1]);
+    d3.select("#depthMinN").property("value", color.domain()[0]);
+    d3.select("#depthMaxN").property("value", color.domain()[1]);
+    d3.select("#includeNA").property("checked", false);
+
+    // Reset year sliders
+    d3.select("#yearMinR").property("value", yearExtent[0]);
+    d3.select("#yearMaxR").property("value", yearExtent[1]);
+    d3.select("#yearMinN").property("value", yearExtent[0]);
+    d3.select("#yearMaxN").property("value", yearExtent[1]);
+
+    // Reset location input (clear selections)
+    d3.select("#locInput").property("value", "");
+    if (typeof selectedLocations !== "undefined") selectedLocations.clear?.();
+
+    // Refresh the map
+    render();
+  });
+  
   /* ---------- Zoom ---------- */
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> zoomLayer.attr("transform", ev.transform));
   svg.call(zoom).on("click", (e)=>{
