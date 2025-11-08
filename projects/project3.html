@@ -3,23 +3,24 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Multi-select Location (State + City)</title>
+<title>D3 US Earthquakes — Stable Map + Multi-select Locations</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
   :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; --panel:#0f141c; }
   *{ box-sizing:border-box }
-  body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
+  html,body{ height:100% }
+  body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; overflow:hidden }
 
   header{ height:52px; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--grid); white-space:nowrap; overflow:hidden }
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
-  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 340px 1fr; }
+  .layout{ position:absolute; inset:52px 0 0 0; display:grid; grid-template-columns: 340px 1fr; min-height:0 }
   @media (max-width:900px){ .layout{ grid-template-columns: 280px 1fr; } }
 
-  .sidebar{ border-right:1px solid var(--grid); background:rgba(15,20,28,.94); padding:16px 14px; overflow-y:auto; overflow-x:hidden; }
-  .filters{ display:grid; gap:16px }
+  .sidebar{ border-right:1px solid var(--grid); background:rgba(15,20,28,.94); padding:16px 14px; overflow:auto }
+  .filters{ display:grid; gap:16px; min-width:0 }
   .section{ display:grid; gap:8px; padding-bottom:10px; border-bottom:1px dashed #1c2837 }
   .section:last-child{ border-bottom:none; }
 
@@ -27,7 +28,6 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Dual range sliders */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{ -webkit-appearance:none; appearance:none; position:absolute; width:100%; background:none; pointer-events:none; }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
@@ -39,11 +39,10 @@
   .row.values{ grid-template-columns: 1fr; }
   .row.values .label{ display:none; }
   .valuebox{ display:grid; grid-template-columns: auto 70px 20px auto 70px; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; }
-  input[type="number"]{ background:#0f141c; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:3px 6px; width:70px; }
+  input[type="number"]{ background:#0f141c; color:#e8eef7; border:1px solid var(--grid); border-radius:6px; padding:3px 6px; width:70px; }
 
   .checkboxrow label{ display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; margin-top:4px; }
 
-  /* Location autocomplete + chips */
   .locbox{ position:relative; display:grid; gap:8px; }
   .locbox input[type="text"]{ width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--grid); background:#0f141c; color:#e8eef7; min-width:0; }
   .helper{ color:var(--muted); font-size:11px }
@@ -58,7 +57,7 @@
   .loc-item small{ color:var(--muted); font-size:11px; margin-left:6px }
   .loc-item:hover, .loc-item.active{ background:#162031; }
 
-  .view{ position:relative }
+  .view{ position:relative; min-height:0 } /* allows svg to fill remaining height */
   svg{ width:100%; height:100%; display:block }
 
   .states{ fill:#0d1320; stroke:#2a3a52; stroke-width:.6 }
@@ -75,14 +74,13 @@
 <body>
 <header>
   <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Select multiple cities and/or entire states (AZ, CA…). Tooltip shows City, <b>ST</b>.</div>
+  <div class="sub">Stable rendering with defensive guards. Multi-select cities and/or whole states (AZ, CA…).</div>
 </header>
 
 <div class="layout">
   <aside class="sidebar">
     <div class="filters">
 
-      <!-- Magnitude -->
       <div class="section">
         <div class="row"><div class="label">Magnitude</div><div class="valuespan" id="magVals">—</div></div>
         <div class="slider2">
@@ -94,7 +92,6 @@
         </div>
       </div>
 
-      <!-- Depth -->
       <div class="section">
         <div class="row"><div class="label">Depth (km)</div><div class="valuespan" id="depthVals">—</div></div>
         <div class="slider2">
@@ -107,7 +104,6 @@
         <div class="checkboxrow"><label><input id="includeNA" type="checkbox"> Include N/A depth</label></div>
       </div>
 
-      <!-- Year -->
       <div class="section">
         <div class="row"><div class="label">Year</div><div class="valuespan" id="yearVals">—</div></div>
         <div class="slider2">
@@ -119,17 +115,16 @@
         </div>
       </div>
 
-      <!-- Location (multi-select) -->
       <div class="section">
         <div class="row">
           <div class="label">Location</div>
-          <div class="valuespan helper">Add cities (“Long Beach, CA”) or whole states (“CA/California”)</div>
+          <div class="valuespan helper">Add cities (“Long Beach, CA”) or whole states (“CA/Arizona”).</div>
         </div>
         <div class="locbox">
           <input id="locInput" type="text" placeholder="Type: Phoenix, AZ • CA • Arizona…" autocomplete="off">
           <div id="chips" class="chips"></div>
           <div id="locSuggest" class="loc-suggest"></div>
-          <div class="helper">Up to 10 suggestions. Click to add. Use Backspace on empty box to remove the last chip. “Clear” removes all.</div>
+          <div class="helper">Up to 10 suggestions. Click to add. Backspace on empty box removes last chip. “Clear” removes all.</div>
         </div>
         <div class="row values">
           <div class="valuebox" style="grid-template-columns:auto auto;">
@@ -153,7 +148,17 @@
 
 <script>
 (async function () {
-  /* ---------------- State maps ---------------- */
+  /* ---------- Small helpers ---------- */
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const safeExtent = (arr, fallback=[0,1]) => {
+    if (!arr || !arr.length) return fallback.slice();
+    const e = d3.extent(arr.filter(x => x!=null && isFinite(x)));
+    if (e[0]==null || e[1]==null || isNaN(e[0]) || isNaN(e[1])) return fallback.slice();
+    if (e[0]===e[1]) return [e[0], e[0]+(typeof e[0]==="number"?1:1)];
+    return e;
+  };
+
+  /* ---------- State maps ---------- */
   const STATE_ABBR_TO_FULL = {
     AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas", CA:"California", CO:"Colorado",
     CT:"Connecticut", DE:"Delaware", FL:"Florida", GA:"Georgia", HI:"Hawaii", ID:"Idaho",
@@ -168,9 +173,6 @@
     PR:"Puerto Rico", GU:"Guam", VI:"Virgin Islands", AS:"American Samoa", MP:"Northern Mariana Islands"
   };
   const STATE_FULL_TO_ABBR = Object.fromEntries(Object.entries(STATE_ABBR_TO_FULL).map(([k,v])=>[v.toLowerCase(), k]));
-
-  const isUSPS = s => /^[A-Z]{2}$/.test(s);
-
   function normalizeStateToken(token){
     if(!token) return {abbr:"", full:""};
     const t = token.trim();
@@ -179,7 +181,6 @@
     if (ab) return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] };
     return { abbr:"", full:"" };
   }
-
   function findStateInText(text){
     if (!text) return null;
     const t = text.toLowerCase();
@@ -194,21 +195,10 @@
     }
     return best ? { abbr: best.abbr, full: best.full } : null;
   }
+  const cleanCityToken = s => (s||"").replace(/^\s*(?:the\s+)?\d{3,4}\s+/i, "").trim();
+  const displayLabel = d => (d.locCity && d.locStAbbr)?`${d.locCity}, ${d.locStAbbr}`:(d.locStAbbr||d.locLabel||d.region||"Location");
 
-  function cleanCityToken(s){
-    if (!s) return s;
-    return s.replace(/^\s*(?:the\s+)?\d{3,4}\s+/i, "").trim();
-  }
-
-  function displayLabel(d){
-    if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
-    if (d.locStAbbr) return d.locStAbbr;
-    if (d.locLabel)  return d.locLabel;
-    if (d.region)    return d.region;
-    return "Location";
-  }
-
-  /* ---------------- Layout & map ---------------- */
+  /* ---------- Layout & map ---------- */
   const svg = d3.select("#svg");
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
@@ -218,21 +208,29 @@
 
   function sizeSVG(){
     const r = document.querySelector(".view").getBoundingClientRect();
-    svg.attr("viewBox", [0,0,r.width,r.height]);
-    return { width:r.width, height:r.height };
+    const w = Math.max(100, r.width||0);
+    const h = Math.max(100, r.height||0);
+    svg.attr("viewBox", [0,0,w,h]);
+    return { width:w, height:h };
   }
   let { width, height } = sizeSVG();
-  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); drawLegend(); render(); });
+  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); updateProjection(); drawLegend(); render(); });
 
-  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width,height)*1.2);
-  const path = d3.geoPath(projection);
+  let projection = d3.geoAlbersUsa();
+  let path = d3.geoPath(projection);
+  function updateProjection(){
+    projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.max(300, Math.min(width,height)*1.2));
+    path = d3.geoPath(projection);
+    mapG.selectAll("path").attr("d",path);
+  }
+
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
   const states = topojson.feature(us, us.objects.states);
   const borders = topojson.mesh(us, us.objects.states, (a,b)=>a!==b);
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  /* ---------------- Data ---------------- */
+  /* ---------- Data ---------- */
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
     const depth = (d.depth===""||d.depth==null)?null:+d.depth;
     const mag   = (d.mag===""  ||d.mag==null)?null:+d.mag;
@@ -280,14 +278,14 @@
 
   points.forEach(d => {
     const cs = cityStateFromPlace(d);
-    d.locLabel = cs.label;      // "City, ST" or "ST"
+    d.locLabel = cs.label;
     d.locCity  = cs.city;
     d.locStAbbr= cs.stAbbr;
     d.locStFull= cs.stFull;
   });
 
-  /* ------------- Build location entries (canonical display) ------------- */
-  const locMap = new Map(); // canonical label -> {label,count,forms:Set, stAbbr, stFull}
+  /* ---------- Location entries (canonical display) ---------- */
+  const locMap = new Map();
   for (const d of points){
     if (!d.locLabel) continue;
     const key = d.locLabel;
@@ -298,11 +296,7 @@
     const withFullLower = (withFull||"").toLowerCase();
 
     if (!locMap.has(key)){
-      locMap.set(key, {
-        label:key, count:1,
-        forms:new Set([labelLower, withFullLower, rawPlace, rawRegion]),
-        stAbbr:d.locStAbbr||"", stFull:d.locStFull||""
-      });
+      locMap.set(key, { label:key, count:1, forms:new Set([labelLower, withFullLower, rawPlace, rawRegion]), stAbbr:d.locStAbbr||"", stFull:d.locStFull||"" });
     } else {
       const e = locMap.get(key);
       e.count++;
@@ -316,55 +310,49 @@
     .map(e => ({ label:e.label, count:e.count, forms:Array.from(e.forms), stAbbr:e.stAbbr, stFull:e.stFull }))
     .sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
 
-  /* ---------------- Scales & UI state ---------------- */
-  const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
-  const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
-  const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
-  const dDomMax   = Math.min(700, Math.ceil((depthExt[1] ?? 700)));
-  const magVals = points.map(d=>d.mag).filter(v=>v!=null && isFinite(v));
-  const magDom  = d3.extent(magVals.length ? magVals : [4.5,8]);
-  const yearVals = points.map(d=>d.year).filter(y=>y!=null && isFinite(y));
-  const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
+  /* ---------- Scales & UI state (safe domains) ---------- */
+  const depthExt  = safeExtent(points.map(d=>d.depth).filter(v=>v!=null && isFinite(v)), [0,700]);
+  const dDomMin   = clamp(Math.floor(depthExt[0]), 0, 10000);
+  const dDomMax   = clamp(Math.ceil(depthExt[1]), dDomMin+1, 10000);
+
+  const magExt    = safeExtent(points.map(d=>d.mag).filter(v=>v!=null && isFinite(v)), [4.5,9.5]);
+  const yearExt   = safeExtent(points.map(d=>d.year).filter(v=>v!=null && isFinite(v)), [1900, 2025]);
 
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
-  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
+  const sizeScale = d3.scaleSqrt().domain(magExt).range([1.8, 11]);
 
-  let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
+  let magRange=[magExt[0],magExt[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearExt[0],yearExt[1]];
+  const selectedLocs = new Set(); // "City, ST" or "ST"
 
-  // NEW: multi-select set of canonical labels.
-  const selectedLocs = new Set(); // holds "City, ST" and/or "ST"
-
-  /* ---------------- Dual sliders init ---------------- */
+  /* ---------- Dual sliders init (safe) ---------- */
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
     [loR.min,hiR.min,loN.min,hiN.min]=[domain[0],domain[0],domain[0],domain[0]];
     [loR.max,hiR.max,loN.max,hiN.max]=[domain[1],domain[1],domain[1],domain[1]];
     [loR.step,hiR.step,loN.step,hiN.step]=[step,step,step,step];
-    const clamp=v=>Math.min(domain[1],Math.max(domain[0],step>=1?Math.round(v/step)*step:Math.round(v*10)/10));
-    const paint=(a,b)=>{const p=v=>100*(v-domain[0])/(domain[1]-domain[0]);loR.style.background=`linear-gradient(to right,#dfe8f6 ${p(domain[0])}%,var(--accent) ${p(a)}%,var(--accent) ${p(b)}%,#dfe8f6 ${p(domain[1])}%)`;};
-    const sync=(a,b,notify=true)=>{a=clamp(a);b=clamp(b);if(a>b)[a,b]=[b,a];[loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];paint(a,b);if(label){const f=step===0.1?x=>(+x).toFixed(1):x=>x;label.textContent=`${f(a)} – ${f(b)}`;}if(notify)onChange([a,b]);};
+    const round=(v)=> step>=1?Math.round(v/step)*step:Math.round(v*10)/10;
+    const clampD=v=>clamp(round(v), domain[0], domain[1]);
+    const paint=(a,b)=>{const p=v=>100*(v-domain[0])/(domain[1]-domain[0]||1);loR.style.background=`linear-gradient(to right,#dfe8f6 ${p(domain[0])}%,var(--accent) ${p(a)}%,var(--accent) ${p(b)}%,#dfe8f6 ${p(domain[1])}%)`;};
+    const sync=(a,b,notify=true)=>{a=clampD(a);b=clampD(b);if(a>b)[a,b]=[b,a];[loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];paint(a,b);if(label){const f=step===0.1?x=>(+x).toFixed(1):x=>x;label.textContent=`${f(a)} – ${f(b)}`;}if(notify)onChange([a,b]);};
     loR.oninput=()=>sync(+loR.value,+hiR.value);
     hiR.oninput=()=>sync(+loR.value,+hiR.value);
     loN.onchange=()=>sync(+loN.value,+hiN.value);
     hiN.onchange=()=>sync(+loN.value,+hiN.value);
-    sync(domain[0],domain[1]);
+    sync(domain[0],domain[1],false); onChange([domain[0],domain[1]]);
   }
-  initDual({ domain:magDom, step:0.1, ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'}, labelElId:'magVals', onChange:r=>{ magRange=r; render(); }});
+  initDual({ domain:magExt, step:0.1, ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'}, labelElId:'magVals', onChange:r=>{ magRange=r; render(); }});
   initDual({ domain:[dDomMin,dDomMax], step:10, ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'}, labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }});
-  initDual({ domain:yearDom, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
+  initDual({ domain:yearExt, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
 
-  /* ---------------- Location: suggestions + chips ---------------- */
+  /* ---------- Location: suggestions + chips ---------- */
   const locInput = document.getElementById("locInput");
   const locPanel = document.getElementById("locSuggest");
   const chipsBox = document.getElementById("chips");
   const clearBtn = document.getElementById("clearLoc");
   let activeIdx = -1;
 
-  function closePanel(){ locPanel.style.display = "none"; activeIdx=-1; }
-  function openPanel(){ if (locPanel.childElementCount>0){ locPanel.style.display = "block"; } }
-
-  function canonQuery(q){
+  const canonQuery = (q)=>{
     const parts = q.split(",").map(s=>s.trim());
     if (parts.length>=2){
       const stateTok = parts.pop();
@@ -373,11 +361,13 @@
       return parts.join(", ") + (ab ? (", " + ab) : "");
     }
     return q;
-  }
+  };
+
+  function closePanel(){ locPanel.style.display = "none"; activeIdx=-1; }
+  function openPanel(){ if (locPanel.childElementCount>0){ locPanel.style.display = "block"; } }
 
   function renderChips(){
     chipsBox.innerHTML = "";
-    if (selectedLocs.size===0) return;
     for (const label of selectedLocs){
       const span = document.createElement("span");
       span.className = "chip";
@@ -386,11 +376,10 @@
       chipsBox.appendChild(span);
     }
   }
-
   function addSelection(label){
-    selectedLocs.add(label);   // label can be "City, ST" OR "ST"
-    renderChips();
-    render();
+    if (!label) return;
+    selectedLocs.add(label);
+    renderChips(); render();
   }
 
   function renderSuggestions(qRaw){
@@ -405,20 +394,17 @@
     let results = [];
 
     if (abbrOnly || fullOnlyAbbr){
-      const ab = abbrOnly || fullOnlyAbbr; // USPS code
-      // special top item: whole state
+      const ab = abbrOnly || fullOnlyAbbr;
       const stateTop = { label: ab, count: 0, _state:true };
-      const cityList = locEntries.filter(e => e.stAbbr === ab).slice(0, 9); // leave room for stateTop
+      const cityList = locEntries.filter(e => e.stAbbr === ab).slice(0, 9);
       results = [stateTop, ...cityList];
     } else {
       const qCanon = canonQuery(qTrim).toLowerCase();
       const starts = [], contains = [];
-
       for (const e of locEntries){
-        const matchedStarts = e.forms.some(f => f && (f.startsWith(qCanon) || f.startsWith(qLower)));
-        const matchedContains = !matchedStarts && e.forms.some(f => f && f.includes(qLower));
-        if (matchedStarts) starts.push(e);
-        else if (matchedContains) contains.push(e);
+        const mStart = e.forms.some(f => f && (f.startsWith(qCanon) || f.startsWith(qLower)));
+        const mCont  = !mStart && e.forms.some(f => f && f.includes(qLower));
+        if (mStart) starts.push(e); else if (mCont) contains.push(e);
         if (starts.length >= 10) break;
       }
       results = starts.concat(contains).slice(0,10);
@@ -430,48 +416,34 @@
       const div = document.createElement("div");
       div.className = "loc-item";
       if (r._state){
-        div.textContent = r.label + " (all)";
-        const sm = document.createElement("small"); sm.textContent = "state";
-        div.appendChild(sm);
+        div.textContent = r.label + " (all)"; const sm=document.createElement("small"); sm.textContent="state"; div.appendChild(sm);
       } else {
-        div.textContent = r.label;            // canonical "City, ST" or "ST"
-        const sm = document.createElement("small"); sm.textContent = r.count;
-        div.appendChild(sm);
+        div.textContent = r.label; const sm=document.createElement("small"); sm.textContent=r.count; div.appendChild(sm);
       }
-      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r._state ? r.label : r.label); });
+      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r.label); });
       locPanel.appendChild(div);
     }
-    activeIdx = -1;
-    openPanel();
+    activeIdx = -1; openPanel();
   }
-
   function applyTyped(){
     const typed = locInput.value.trim();
-    if (!typed){ return; }
-    // Add state if pure state
+    if (!typed) return;
     const ab = STATE_ABBR_TO_FULL[typed.toUpperCase()] ? typed.toUpperCase()
              : (STATE_FULL_TO_ABBR[typed.toLowerCase()] || "");
     if (ab){ addSelection(ab); return; }
-    // Else add if exact canonical label exists
     const typedCanon = canonQuery(typed);
     if (locMap.has(typedCanon)) { addSelection(typedCanon); return; }
-    if (locMap.has(typed)) { addSelection(typed); return; }
+    if (locMap.has(typed))      { addSelection(typed); return; }
   }
-
-  locInput.addEventListener("input", (e)=>{
-    const v = e.target.value;
-    renderSuggestions(v);
-  });
+  locInput.addEventListener("input", (e)=> renderSuggestions(e.target.value));
   locInput.addEventListener("keydown", (e)=>{
     const items = Array.from(locPanel.children);
     if (e.key === "ArrowDown" && items.length){
-      e.preventDefault();
-      activeIdx = Math.min(items.length-1, activeIdx+1);
+      e.preventDefault(); activeIdx = Math.min(items.length-1, activeIdx+1);
       items.forEach((el,i)=> el.classList.toggle("active", i===activeIdx));
       if (activeIdx>=0) items[activeIdx].scrollIntoView({block:"nearest"});
     } else if (e.key === "ArrowUp" && items.length){
-      e.preventDefault();
-      activeIdx = Math.max(-1, activeIdx-1);
+      e.preventDefault(); activeIdx = Math.max(-1, activeIdx-1);
       items.forEach((el,i)=> el.classList.toggle("active", i===activeIdx));
     } else if (e.key === "Enter"){
       e.preventDefault();
@@ -481,34 +453,24 @@
       } else {
         applyTyped();
       }
-      locInput.value = "";
-      closePanel();
+      locInput.value = ""; closePanel();
     } else if (e.key === "Backspace" && !locInput.value){
-      // remove last chip
-      const last = Array.from(selectedLocs).pop();
-      if (last){ selectedLocs.delete(last); renderChips(); render(); }
-    } else if (e.key === "Escape"){
-      closePanel();
-    }
+      const last = Array.from(selectedLocs).pop(); if (last){ selectedLocs.delete(last); renderChips(); render(); }
+    } else if (e.key === "Escape"){ closePanel(); }
   });
-  document.addEventListener("click", (e)=>{
-    if (!document.querySelector(".locbox").contains(e.target)) closePanel();
-  });
-  clearBtn.onclick = ()=>{ selectedLocs.clear(); renderChips(); render(); };
+  document.addEventListener("click", (e)=>{ if (!document.querySelector(".locbox").contains(e.target)) closePanel(); });
+  document.getElementById("clearLoc").onclick = ()=>{ selectedLocs.clear(); renderChips(); render(); };
 
-  /* ---------------- Legend ---------------- */
-  const color = d3.scaleSequential([Math.max(0, Math.floor((d3.extent(points.filter(p=>p.depth!=null).map(p=>p.depth))[0] ?? 0))), 
-                                   Math.min(700, Math.ceil((d3.extent(points.filter(p=>p.depth!=null).map(p=>p.depth))[1] ?? 700)))], 
-                                   d3.interpolateTurbo);
-
+  /* ---------- Legend ---------- */
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad = 10;
     const cardW = Math.min(260, Math.max(220, width * 0.22));
     const depthBarH = 12;
 
-    const size = d3.scaleSqrt().domain(d3.extent(points.map(d=>d.mag).filter(v=>v!=null))).range([3, 9]);
-    const maxR = size(size.domain()[1]);
+    const mags = safeExtent(points.map(d=>d.mag).filter(v=>v!=null && isFinite(v)), [4.5,9.5]);
+    const sScale = d3.scaleSqrt().domain(mags).range([3, 9]);
+    const maxR = sScale(mags[1]);
 
     const cardH = 26 + depthBarH + 12 + 16 + 8 + 26 + maxR + 12 + 8;
     const x0 = width - cardW - 12;
@@ -531,17 +493,14 @@
       legendG.append("text").attr("x",tx).attr("y",tickY).attr("text-anchor", i===0?'start':i===2?'end':'middle').attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6').attr("font-size",11).text(t);
     });
 
-    const mags = d3.extent(points.map(d=>d.mag).filter(v=>v!=null));
-    const sScale = d3.scaleSqrt().domain(mags).range([3, 9]);
     const magVals = [mags[0], (mags[0]+mags[1])/2, mags[1]].map(v=>+v.toFixed(1));
-
-    const magTitleY = tickY + 8 + 16;
-    legendG.append("text").attr("class","legend-title").attr("x",x0+pad).attr("y",magTitleY).text("Magnitude");
-
-    const cxLeft  = x0 + pad + 9 + 4;
-    const cxRight = x0 + cardW - pad - 9 - 4;
+    const cxLeft  = x0 + pad + maxR + 4;
+    const cxRight = x0 + cardW - pad - maxR - 4;
     const gap = (cxRight - cxLeft) / (magVals.length - 1);
-    const circlesY = magTitleY + 10 + 16;
+    const circlesY = tickY + 8 + 16 + 10 + 16;
+
+    legendG.append("text").attr("class","legend-title").attr("x",x0+pad).attr("y",tickY+8+16).text("Magnitude");
+
     magVals.forEach((m,i)=>{
       const cx = cxLeft + i*gap, r = sScale(m);
       legendG.append("circle").attr("cx",cx).attr("cy",circlesY).attr("r",r).attr("fill","#e6e6e6").attr("fill-opacity",.9).attr("stroke","#000").attr("stroke-opacity",.4);
@@ -549,67 +508,66 @@
     });
   }
 
-  /* ---------------- Rendering ---------------- */
-  const sizeScale = d3.scaleSqrt().domain(d3.extent(points.map(d=>d.mag).filter(v=>v!=null))).range([1.8, 11]);
-
+  /* ---------- Render ---------- */
   function render(){
-    const allowNA = document.getElementById("includeNA").checked;
+    try{
+      const allowNA = document.getElementById("includeNA").checked;
 
-    const filtered = points.filter(d=>{
-      const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
-      const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
-      const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
+      const filtered = points.filter(d=>{
+        const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
+        const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
+        const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
 
-      // Multi-select: if no selections, pass; else match ANY chip.
-      let locOK = true;
-      if (selectedLocs.size > 0){
-        const st = d.locStAbbr || "";
-        const lbl = d.locLabel || "";
-        locOK = (st && selectedLocs.has(st)) || (lbl && selectedLocs.has(lbl));
-      }
-      return magOK && yearOK && depthOK && locOK;
-    });
-
-    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=>d.time+"|"+i);
-
-    sel.enter().append("circle")
-      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
-      .attr("r", d => sizeScale(d.mag ?? 0))
-      .attr("transform", d => {
-        const p = projection([d.lon, d.lat]);
-        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
-      })
-      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
-      .attr("fill-opacity", .85)
-      .on("mousemove", (event, d) => {
-        const [x,y] = d3.pointer(event, document.querySelector(".view"));
-        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
-          <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${displayLabel(d)}</span></div>
-          <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
-          <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
-        `);
-      })
-      .on("mouseleave", ()=> tooltip.style("opacity", 0));
-
-    sel
-      .attr("r", d => sizeScale(d.mag ?? 0))
-      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
-      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
-      .attr("transform", d => {
-        const p = projection([d.lon, d.lat]);
-        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
+        let locOK = true;
+        if (selectedLocs.size > 0){
+          const st  = (d.locStAbbr||"").toUpperCase();
+          const lbl = (d.locLabel||"");
+          locOK = (st && selectedLocs.has(st)) || (lbl && selectedLocs.has(lbl));
+        }
+        return magOK && yearOK && depthOK && locOK;
       });
 
-    sel.exit().remove();
+      // Keep the base map visible regardless; only points are filtered
+      const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=> (d.time||"t")+ "|" + i);
+
+      sel.enter().append("circle")
+        .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+        .attr("r", d => sizeScale(d.mag ?? magExt[0]))
+        .attr("transform", d => {
+          const p = projection([d.lon, d.lat]); return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
+        })
+        .attr("fill", d => d.depth==null ? "#9aa0a6" : color(clamp(d.depth, dDomMin, dDomMax)))
+        .attr("fill-opacity", .85)
+        .on("mousemove", (event, d) => {
+          const [x,y] = d3.pointer(event, document.querySelector(".view"));
+          tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
+            <div><b>${(d.mag!=null?d.mag.toFixed(1):"M?")}</b> — <span style="color:var(--muted)">${displayLabel(d)}</span></div>
+            <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
+            <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
+          `);
+        })
+        .on("mouseleave", ()=> tooltip.style("opacity", 0));
+
+      sel
+        .attr("r", d => sizeScale(d.mag ?? magExt[0]))
+        .attr("fill", d => d.depth==null ? "#9aa0a6" : color(clamp(d.depth, dDomMin, dDomMax)))
+        .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
+        .attr("transform", d => {
+          const p = projection([d.lon, d.lat]); return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
+        });
+
+      sel.exit().remove();
+    }catch(err){
+      console.error("Render error:", err); // keeps page alive
+    }
   }
 
+  updateProjection();
   drawLegend();
   render();
 
-  /* ---------------- Zoom ---------------- */
-  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
-    zoomLayer.attr("transform", ev.transform);
-  });
+  /* ---------- Zoom ---------- */
+  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> zoomLayer.attr("transform", ev.transform));
   svg.call(zoom).on("click", (e)=>{
     if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
   });
