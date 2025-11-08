@@ -376,7 +376,7 @@ html[data-theme="dark"] .theme-switcher select {
 }
 
 /* Empty-state text for when JSON is missing or fetch fails */
-.empty-state { opacity: .8; font-style: italic; }
+.empty-state { opacity: .8; }
 
 /* GitHub profile stats block (Home page) */
 .profile-stats-section { margin-block: 2rem; }
@@ -512,7 +512,7 @@ html[data-theme="dark"] .pill {
   padding: .6rem .8rem;
 }
 .stats-grid .card em {
-  display: block; opacity: .7; margin-top: .2rem; font-weight: 650; color:#006A96;
+  display: block; opacity: .7; margin-top: .2rem; font-weight: 500; color:#006A96;
 }
 .stats-grid .mini { padding: .5rem .6rem; }
 
