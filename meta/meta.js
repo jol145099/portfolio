@@ -145,7 +145,7 @@ function renderScatter(rows) {
   svg.selectAll('*').remove();
   if (!rows.length) return;
 
-  const W = 640, H = 320, M = { t: 18, r: 14, b: 44, l: 52 };
+  const W = 960, H = 540, M = { t: 25, r: 25, b: 60, l: 65 };
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
 
   const g = svg.attr('viewBox', `0 0 ${W} ${H}`)
@@ -228,7 +228,7 @@ function renderScatter(rows) {
       });
     }
 
-    dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : 'var(--ucsd-navy)')
+    dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : 'var(--ucsd-gold)')
         .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.85);
 
     selCount.textContent = `Selected: ${fmt(sel.length)}`;
