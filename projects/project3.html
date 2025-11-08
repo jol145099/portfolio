@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Exact Location Filter</title>
+<title>D3 US Earthquakes — Exact Location Filter (Compact)</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
-  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; }
+  :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; --panel:#0f141c; }
 
   *{ box-sizing:border-box }
   body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
@@ -16,7 +16,7 @@
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
-  /* --- Layout: left sidebar + map --- */
+  /* Layout: fixed-width left sidebar + map */
   .layout{
     position:absolute; inset:52px 0 0 0;
     display:grid; grid-template-columns: 340px 1fr;
@@ -28,7 +28,7 @@
     background:rgba(15,20,28,.94);
     padding:16px 14px;
     overflow-y:auto;
-    overflow-x:hidden;
+    overflow-x:hidden; /* prevent horizontal scroll */
   }
 
   .filters{ display:grid; gap:16px }
@@ -60,13 +60,12 @@
   .slider2 input.lower{ z-index:1 }
   .slider2 input.upper{ z-index:2 }
 
-  /* Min/Max inputs row (compact) */
   .row.values{ grid-template-columns: 1fr; }
   .row.values .label{ display:none; }
 
   .valuebox{
     display:grid;
-    grid-template-columns: auto 70px 20px auto 70px; /* 20px gap between Min/Max inputs */
+    grid-template-columns: auto 70px 20px auto 70px; /* 20px gap between Min/Max */
     align-items:center;
     gap:6px;
     color:var(--muted);
@@ -84,13 +83,40 @@
     margin-top:4px;
   }
 
-  /* Exact location combobox */
-  .locbox{ display:grid; gap:8px }
+  /* Exact location (custom autocomplete) */
+  .locbox{ position:relative; display:grid; gap:8px; }
   .locbox input[type="text"]{
     width:100%; padding:6px 8px; border-radius:6px;
     border:1px solid var(--grid); background:#0f141c; color:var(--text);
+    min-width:0; /* keep inside column */
   }
   .helper{ color:var(--muted); font-size:11px }
+
+  .loc-suggest{
+    position:absolute;
+    left:0; right:0;
+    top: calc(100% + 4px); /* show BELOW the text box */
+    background:var(--panel);
+    border:1px solid var(--grid);
+    border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+    max-height:220px;
+    overflow-y:auto;
+    z-index:20;
+    display:none; /* hidden by default */
+  }
+  .loc-item{
+    padding:6px 8px;
+    font-size:12px;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis; /* long labels don’t blow out width */
+    cursor:pointer;
+  }
+  .loc-item:hover, .loc-item.active{
+    background:#162031;
+  }
 
   .view{ position:relative }
   svg{ width:100%; height:100%; display:block }
@@ -152,12 +178,8 @@
             <span>Max</span><input id="depthMaxN" type="number" step="10">
           </div>
         </div>
-        <div class="row values" style="margin-top:-4px;">
-          <div class="valuebox">
-            <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px;">
-              <input id="includeNA" type="checkbox"> Include N/A depth
-            </label>
-          </div>
+        <div class="checkboxrow">
+          <label><input id="includeNA" type="checkbox"> Include N/A depth</label>
         </div>
       </div>
 
@@ -180,16 +202,16 @@
         </div>
       </div>
 
-      <!-- Exact Location (City, ST) via lat/lon-derived parsing -->
+      <!-- Exact Location (custom suggestions) -->
       <div class="section">
         <div class="row">
           <div class="label">Location</div>
-          <div class="valuespan helper">Choose exact city, state</div>
+          <div class="valuespan helper">Exact “City, ST”</div>
         </div>
         <div class="locbox">
-          <input id="locInput" type="text" placeholder="Type or pick… e.g., Phoenix, AZ" list="locList" autocomplete="off">
-          <datalist id="locList"></datalist>
-          <div class="helper">Exact match on normalized “City, ST” parsed from each quake’s place/region.</div>
+          <input id="locInput" type="text" placeholder="Type to filter… e.g., Phoenix, AZ" autocomplete="off">
+          <div id="locSuggest" class="loc-suggest"></div>
+          <div class="helper">Shows up to 10 matches below. Click to apply. Clear to show all.</div>
         </div>
       </div>
 
@@ -242,17 +264,12 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // --- Normalize exact location labels from place/region ---
-  // Examples of 'place' seen in USGS data:
-  //  "10km ESE of Anza, CA"  -> City=Anza, ST=CA -> "Anza, CA"
-  //  "63 km W of Anchor Point, Alaska" -> City=Anchor Point, ST=Alaska -> "Anchor Point, Alaska"
-  //  "Hawaii region, Hawaii" -> falls back to region/state
+  /* -------- Build a normalized "City, ST" label from place/region -------- */
   function cityStateFromPlace(d){
     const place = (d.place||"").trim();
     const region = (d.region||"").trim();
 
-    // Try to grab "X of CITY, STATE" pattern
-    // capture after 'of ' until the next comma as city; the token after comma as state/territory
+    // Pattern: "<dist> of City, ST"
     const ofMatch = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})/i);
     if (ofMatch){
       const city = ofMatch[1].trim();
@@ -260,7 +277,7 @@
       return city && state ? `${city}, ${state}` : null;
     }
 
-    // Try "CITY, STATE" directly
+    // Pattern: "City, ST"
     const csMatch = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})\s*$/);
     if (csMatch){
       const city = csMatch[1].trim();
@@ -268,39 +285,29 @@
       return city && state ? `${city}, ${state}` : null;
     }
 
-    // Fall back to region if it looks like "City, State" or just a State (e.g., "Alaska")
+    // Fallback: region (could be "Hawaii", "Alaska", etc.)
     const regMatch = region.match(/^\s*([^,]+)(?:\s*,\s*([A-Za-z.\s-]{2,}))?\s*$/);
     if (regMatch){
       if (regMatch[2]) return `${regMatch[1].trim()}, ${regMatch[2].trim()}`;
-      return regMatch[1].trim(); // just the state/area name
+      return regMatch[1].trim();
     }
 
-    // Last resort: try to salvage last "..., STATE" part from place
-    const tail = place.split(',').map(s=>s.trim());
-    if (tail.length>=2){
-      const state = tail[tail.length-1];
-      const city = tail[tail.length-2].replace(/.*of\s+/i,'').trim();
+    // Last resort: try last two comma parts
+    const parts = place.split(',').map(s=>s.trim());
+    if (parts.length>=2){
+      const state = parts.pop();
+      const city = parts.pop().replace(/.*of\s+/i,'').trim();
       if (city && state) return `${city}, ${state}`;
     }
-
-    return ""; // no usable label
+    return "";
   }
-
   points.forEach(d => { d.locLabel = cityStateFromPlace(d); });
 
-  // Build datalist options (dedup & sort by frequency)
+  // Unique labels + counts
   const locCounts = d3.rollup(points.filter(d=>d.locLabel), v=>v.length, d=>d.locLabel);
   const locEntries = Array.from(locCounts, ([label,count]) => ({label,count}))
-    .filter(d=>d.label && d.label.length>0);
-  locEntries.sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
-
-  const datalist = document.getElementById('locList');
-  locEntries.slice(0,1000).forEach(({label,count})=>{
-    const opt = document.createElement('option');
-    opt.value = label;
-    opt.label = `${label} (${count})`;
-    datalist.appendChild(opt);
-  });
+    .filter(d=>d.label && d.label.length>0)
+    .sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
 
   // Domains
   const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
@@ -319,9 +326,9 @@
 
   // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
-  let locExact = ""; // exact City, ST label (empty = no filter)
+  let locExact = ""; // exact "City, ST" filter
 
-  // Dual-range initializer
+  // Reusable dual-range init
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
@@ -338,7 +345,7 @@
     sync(domain[0],domain[1]);
   }
 
-  // Initialize sliders
+  // Initialize existing sliders
   initDual({
     domain:magDom, step:0.1,
     ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
@@ -358,7 +365,101 @@
     onChange:r=>{ yearRange=r; render(); }
   });
 
-  // Legend (with smaller circle scale so it fits)
+  /* ----------------- Custom suggestions (max 10, under textbox) ----------------- */
+  const locInput = document.getElementById("locInput");
+  const locPanel = document.getElementById("locSuggest");
+  let activeIdx = -1; // for arrow-key highlight
+
+  function closePanel(){ locPanel.style.display = "none"; activeIdx=-1; }
+  function openPanel(){ if (locPanel.childElementCount>0){ locPanel.style.display = "block"; } }
+
+  function renderSuggestions(q){
+    const query = (q||"").trim().toLowerCase();
+    locPanel.innerHTML = "";
+
+    if (!query){
+      closePanel();
+      return;
+    }
+
+    // Prioritize startsWith, then includes; limit to 10
+    const starts = [];
+    const contains = [];
+    for (const {label,count} of locEntries){
+      const lc = label.toLowerCase();
+      if (lc.startsWith(query)) starts.push({label,count});
+      else if (lc.includes(query)) contains.push({label,count});
+      if (starts.length >= 10) break;
+    }
+    const results = starts.concat(contains).slice(0, 10);
+
+    if (results.length===0){ closePanel(); return; }
+
+    results.forEach(({label,count},i)=>{
+      const div = document.createElement("div");
+      div.className = "loc-item";
+      div.textContent = label; // counts omitted to keep width compact
+      div.title = `${label} (${count})`; // tooltip if truncated
+      div.addEventListener("mousedown", (e)=>{ // use mousedown so it fires before input blur
+        e.preventDefault();
+        applyLocation(label);
+      });
+      locPanel.appendChild(div);
+    });
+    activeIdx = -1;
+    openPanel();
+  }
+
+  function applyLocation(label){
+    locInput.value = label;
+    locExact = label;
+    closePanel();
+    render();
+  }
+
+  // Input events
+  locInput.addEventListener("input", (e)=>{
+    const v = e.target.value;
+    if (!v){ locExact = ""; closePanel(); render(); return; }
+    // Only apply exact filter when user presses Enter or clicks a suggestion
+    renderSuggestions(v);
+  });
+
+  // Keyboard navigation
+  locInput.addEventListener("keydown", (e)=>{
+    const items = Array.from(locPanel.children);
+    if (e.key === "ArrowDown" && items.length){
+      e.preventDefault();
+      activeIdx = Math.min(items.length-1, activeIdx+1);
+      items.forEach((el,i)=> el.classList.toggle("active", i===activeIdx));
+      if (activeIdx>=0) items[activeIdx].scrollIntoView({block:"nearest"});
+    } else if (e.key === "ArrowUp" && items.length){
+      e.preventDefault();
+      activeIdx = Math.max(-1, activeIdx-1);
+      items.forEach((el,i)=> el.classList.toggle("active", i===activeIdx));
+      if (activeIdx>=0) items[activeIdx].scrollIntoView({block:"nearest"});
+    } else if (e.key === "Enter"){
+      if (activeIdx>=0 && items[activeIdx]){
+        e.preventDefault();
+        applyLocation(items[activeIdx].textContent);
+      } else {
+        // If user typed an exact known label, accept; else clear filter
+        const val = locInput.value.trim();
+        if (val && locCounts.has(val)) { applyLocation(val); }
+        else { locExact=""; closePanel(); render(); }
+      }
+    } else if (e.key === "Escape"){
+      closePanel();
+    }
+  });
+
+  // Close suggestions on outside click
+  document.addEventListener("click", (e)=>{
+    if (!document.querySelector(".locbox").contains(e.target)) closePanel();
+  });
+  /* ----------------------------------------------------------------------------- */
+
+  // Legend (unchanged; compact sizes so circles fit)
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad = 10;
@@ -459,18 +560,8 @@
     if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
   });
 
-  // Events
+  // Depth N/A checkbox
   document.getElementById("includeNA").addEventListener("change", render);
-  const locInput = document.getElementById("locInput");
-  locInput.addEventListener("input", ()=>{
-    // If the text matches one of the datalist exact labels, apply; otherwise, treat as cleared
-    const val = locInput.value.trim();
-    if (!val) { locExact=""; render(); return; }
-    // exact-match only against known labels
-    const exists = locCounts.has(val);
-    locExact = exists ? val : ""; // only filter when it's an exact label
-    render();
-  });
 })();
 </script>
 </body>
