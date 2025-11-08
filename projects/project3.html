@@ -435,7 +435,7 @@
       } else {
         div.textContent = r.label; const sm=document.createElement("small"); sm.textContent=r.count; div.appendChild(sm);
       }
-      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r.label); locInput.value = ""; closePanel();});
+      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r.label); locInput.value = "";});
       locPanel.appendChild(div);
     }
     activeIdx = -1; openPanel();
