@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Location Search (AZ / Arizona)</title>
+<title>D3 US Earthquakes — Location Search (AZ / Arizona fixed)</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -136,7 +136,7 @@
         </div>
       </div>
 
-      <!-- Location (search AZ or Arizona) -->
+      <!-- Location -->
       <div class="section">
         <div class="row">
           <div class="label">Location</div>
@@ -164,7 +164,7 @@
 
 <script>
 (async function () {
-  // ---- State maps (abbr <-> full) ----
+  /* ---------------- State maps (abbr <-> full) ---------------- */
   const STATE_ABBR_TO_FULL = {
     AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas", CA:"California", CO:"Colorado",
     CT:"Connecticut", DE:"Delaware", FL:"Florida", GA:"Georgia", HI:"Hawaii", ID:"Idaho",
@@ -179,7 +179,7 @@
     PR:"Puerto Rico", GU:"Guam", VI:"Virgin Islands", AS:"American Samoa", MP:"Northern Mariana Islands"
   };
   const STATE_FULL_TO_ABBR = Object.fromEntries(Object.entries(STATE_ABBR_TO_FULL).map(([k,v])=>[v.toLowerCase(), k]));
-  // --------------------------------------------------------------------------
+  /* ---------------------------------------------------------------- */
 
   const svg = d3.select("#svg");
   const zoomLayer = svg.append("g");
@@ -215,52 +215,40 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Helpers: normalize state token to USPS abbr; return {abbr, full}
+  // Helpers
   function normalizeStateToken(token){
     if(!token) return {abbr:"", full:""};
     const t = token.trim();
-    // If already an abbreviation
-    if (STATE_ABBR_TO_FULL[t.toUpperCase()]) {
-      return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
-    }
-    // If full name
+    if (STATE_ABBR_TO_FULL[t.toUpperCase()]) return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
     const ab = STATE_FULL_TO_ABBR[t.toLowerCase()];
-    if (ab){ return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] }; }
-    return { abbr:t, full:t }; // unknown territory text
+    if (ab) return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] };
+    return { abbr:t, full:t };
   }
 
-  // Build "City, ST" and search forms ("City, ST" and "City, State")
   function cityStateFromPlace(d){
     const place = (d.place||"").trim();
     const region = (d.region||"").trim();
 
-    // pattern: "... of City, State"
     let m = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})/i);
     if (m){
-      const city = m[1].trim();
-      const st   = normalizeStateToken(m[2]);
+      const city = m[1].trim(); const st = normalizeStateToken(m[2]);
       return city && st.abbr ? {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full} : null;
     }
-    // pattern: "City, State"
     m = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})\s*$/);
     if (m){
-      const city = m[1].trim();
-      const st   = normalizeStateToken(m[2]);
+      const city = m[1].trim(); const st = normalizeStateToken(m[2]);
       return city && st.abbr ? {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full} : null;
     }
-    // fallback: region
     if (region){
       const parts = region.split(",").map(s=>s.trim());
       if (parts.length===2){
-        const city = parts[0];
-        const st = normalizeStateToken(parts[1]);
+        const city = parts[0]; const st = normalizeStateToken(parts[1]);
         return { label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full };
       } else if (parts.length===1){
         const st = normalizeStateToken(parts[0]);
         return { label: st.abbr, city:"", stAbbr:st.abbr, stFull:st.full };
       }
     }
-    // last resort: last two comma parts
     const tail = place.split(',').map(s=>s.trim());
     if (tail.length>=2){
       const st = normalizeStateToken(tail[tail.length-1]);
@@ -272,14 +260,14 @@
 
   points.forEach(d => {
     const cs = cityStateFromPlace(d);
-    d.locLabel = cs.label;        // canonical display: City, ST
+    d.locLabel = cs.label;
     d.locCity  = cs.city;
     d.locStAbbr= cs.stAbbr;
     d.locStFull= cs.stFull;
   });
 
-  // Unique locations with search forms (labelLower, labelWithFullLower)
-  const locMap = new Map(); // label -> {label,count,forms:[...]}
+  // Build unique locations with search forms and state info
+  const locMap = new Map(); // label -> {label,count,forms:Set, stAbbr, stFull}
   for (const d of points){
     if (!d.locLabel) continue;
     const key = d.locLabel;
@@ -288,7 +276,7 @@
     const withFullLower = (withFull || key).toLowerCase();
 
     if (!locMap.has(key)){
-      locMap.set(key, { label:key, count:1, forms: new Set([labelLower, withFullLower]) });
+      locMap.set(key, { label:key, count:1, forms:new Set([labelLower, withFullLower]), stAbbr:d.locStAbbr, stFull:d.locStFull });
     } else {
       const e = locMap.get(key);
       e.count++;
@@ -297,7 +285,7 @@
     }
   }
   const locEntries = Array.from(locMap.values())
-    .map(e => ({ label:e.label, count:e.count, forms:Array.from(e.forms) }))
+    .map(e => ({ label:e.label, count:e.count, forms:Array.from(e.forms), stAbbr:e.stAbbr, stFull:e.stFull }))
     .sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
 
   // Domains
@@ -305,10 +293,8 @@
   const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
   const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
   const dDomMax   = Math.min(700, Math.ceil((depthExt[1] ?? 700)));
-
   const magVals = points.map(d=>d.mag).filter(v=>v!=null && isFinite(v));
   const magDom  = d3.extent(magVals.length ? magVals : [4.5,8]);
-
   const yearVals = points.map(d=>d.year).filter(y=>y!=null && isFinite(y));
   const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
@@ -317,9 +303,9 @@
 
   // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
-  let locExact = ""; // exact canonical label ("City, ST")
+  let locExact = "";
 
-  // Dual-range init
+  // Dual sliders
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
@@ -335,22 +321,11 @@
     hiN.onchange=()=>sync(+loN.value,+hiN.value);
     sync(domain[0],domain[1]);
   }
+  initDual({ domain:magDom, step:0.1, ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'}, labelElId:'magVals', onChange:r=>{ magRange=r; render(); }});
+  initDual({ domain:[dDomMin,dDomMax], step:10, ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'}, labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }});
+  initDual({ domain:yearDom, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
 
-  // Sliders
-  initDual({ domain:magDom, step:0.1,
-    ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
-    labelElId:'magVals', onChange:r=>{ magRange=r; render(); }
-  });
-  initDual({ domain:[dDomMin,dDomMax], step:10,
-    ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},
-    labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }
-  });
-  initDual({ domain:yearDom, step:1,
-    ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},
-    labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }
-  });
-
-  // --- Location autocomplete (supports AZ/Arizona) ---
+  /* ---------------- Autocomplete with state-aware matching ---------------- */
   const locInput = document.getElementById("locInput");
   const locPanel = document.getElementById("locSuggest");
   let activeIdx = -1;
@@ -359,58 +334,79 @@
   function openPanel(){ if (locPanel.childElementCount>0){ locPanel.style.display = "block"; } }
 
   function canonQuery(q){
-    // If user typed "... , Arizona" convert to "... , AZ" for exact match later
-    // But for suggestions we use both forms anyway.
     const parts = q.split(",").map(s=>s.trim());
     if (parts.length>=2){
       const stateTok = parts.pop();
-      const norm = normalizeStateToken(stateTok);
-      return parts.join(", ") + ", " + (norm.abbr || stateTok);
+      const ab = STATE_ABBR_TO_FULL[stateTok.toUpperCase()] ? stateTok.toUpperCase()
+               : (STATE_FULL_TO_ABBR[stateTok.toLowerCase()] || "");
+      return parts.join(", ") + (ab ? (", " + ab) : "");
     }
-    // If only "Arizona", leave as-is; we match on forms below.
     return q;
   }
 
   function renderSuggestions(qRaw){
-    const q = (qRaw||"").trim().toLowerCase();
+    const qTrim = (qRaw||"").trim();
+    const qLower = qTrim.toLowerCase();
     locPanel.innerHTML = "";
-    if (!q){ closePanel(); return; }
+    if (!qTrim){ closePanel(); return; }
 
-    // Normalize a query that includes a state name to its abbreviation (for "startsWith" preference),
-    // but also keep the original for "includes" fallback against full-state forms.
-    const qCanon = canonQuery(qRaw).toLowerCase();
+    // Detect if query is purely a state token (abbr or full)
+    const abbrOnly = STATE_ABBR_TO_FULL[qTrim.toUpperCase()] ? qTrim.toUpperCase() : "";
+    const fullOnlyAbbr = STATE_FULL_TO_ABBR[qLower] || "";
 
-    const starts = [];
-    const contains = [];
+    let results = [];
 
-    for (const e of locEntries){
-      // e.forms contains both "city, st" and "city, state" lowercased
-      const matchStarts = e.forms.some(f => f.startsWith(qCanon) || f.startsWith(q));
-      const matchIncl   = matchStarts ? false : e.forms.some(f => f.includes(qCanon) || f.includes(q));
+    if (abbrOnly || fullOnlyAbbr){
+      const ab = abbrOnly || fullOnlyAbbr; // USPS code
+      results = locEntries.filter(e => e.stAbbr === ab).slice(0, 10);
+    } else {
+      // General query: prefer starts-with on city or state token; then includes at token boundaries
+      const qCanon = canonQuery(qTrim).toLowerCase();
 
-      if (matchStarts) starts.push(e);
-      else if (matchIncl) contains.push(e);
+      const starts = [];
+      const contains = [];
 
-      if (starts.length >= 10) break;
+      for (const e of locEntries){
+        // token-aware checks
+        const city = e.label.split(",")[0].trim().toLowerCase();      // city token
+        const stAb = e.stAbbr.toLowerCase();
+        const stFull = (e.stFull||"").toLowerCase();
+
+        const startsMatch = city.startsWith(qLower) ||
+                            (`${city}, ${stAb}`).startsWith(qCanon) ||
+                            (`${city}, ${stFull}`).startsWith(qLower);
+        // includes match only at token boundaries: start of city OR after ", "
+        const includesMatch = (!startsMatch) && (
+          city.includes(qLower) ||
+          (", " + stAb).includes(", " + qLower) ||
+          (", " + stFull).includes(", " + qLower)
+        );
+
+        if (startsMatch) starts.push(e);
+        else if (includesMatch) contains.push(e);
+
+        if (starts.length >= 10) break;
+      }
+      results = starts.concat(contains).slice(0,10);
     }
-    const results = starts.concat(contains).slice(0,10);
+
     if (!results.length){ closePanel(); return; }
 
-    results.forEach(({label,count},i)=>{
+    for (const {label,count} of results){
       const div = document.createElement("div");
       div.className = "loc-item";
-      div.textContent = label;     // display canonical "City, ST"
+      div.textContent = label;
       div.title = `${label} (${count})`;
       div.addEventListener("mousedown", (e)=>{ e.preventDefault(); applyLocation(label); });
       locPanel.appendChild(div);
-    });
+    }
     activeIdx = -1;
     openPanel();
   }
 
   function applyLocation(label){
     locInput.value = label;
-    locExact = label; // always the canonical "City, ST"
+    locExact = label;
     closePanel();
     render();
   }
@@ -437,11 +433,10 @@
         e.preventDefault();
         applyLocation(items[activeIdx].textContent);
       } else {
-        // If the typed text exactly equals a known label (allowing state full name), accept.
         const typed = locInput.value.trim();
         const typedCanon = canonQuery(typed);
-        if (locMap.has(typedCanon)){ applyLocation(typedCanon); }
-        else if (locMap.has(typed)){ applyLocation(typed); } // already canonical
+        if (locMap.has(typedCanon)) { applyLocation(typedCanon); }
+        else if (locMap.has(typed)) { applyLocation(typed); }
         else { locExact=""; closePanel(); render(); }
       }
     } else if (e.key === "Escape"){
@@ -452,6 +447,7 @@
   document.addEventListener("click", (e)=>{
     if (!document.querySelector(".locbox").contains(e.target)) closePanel();
   });
+  /* ------------------------------------------------------------------------ */
 
   // Legend (compact)
   function drawLegend(){
