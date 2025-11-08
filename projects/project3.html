@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Compact Left Filter</title>
+<title>D3 US Earthquakes — Left Filters + Fitting Legend</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -19,7 +19,7 @@
   /* --- Layout: left sidebar + map --- */
   .layout{
     position:absolute; inset:52px 0 0 0;
-    display:grid; grid-template-columns: 340px 1fr; /* widen/narrow here */
+    display:grid; grid-template-columns: 340px 1fr; /* adjust width if needed */
     gap:0;
   }
   @media (max-width:900px){ .layout{ grid-template-columns: 280px 1fr; } }
@@ -29,7 +29,7 @@
     background:rgba(15,20,28,.94);
     padding:16px 14px;
     overflow-y:auto;
-    overflow-x:hidden; /* kill horizontal scroll */
+    overflow-x:hidden; /* no horizontal scroll */
   }
 
   .filters{ display:grid; gap:16px }
@@ -67,7 +67,7 @@
 
   .valuebox{
     display:grid;
-    grid-template-columns: auto 70px 1fr auto 70px;
+    grid-template-columns: auto 70px 20px auto 70px; /* 20px controls space between Min/Max */
     align-items:center;
     gap:6px;
     color:var(--muted);
@@ -101,7 +101,7 @@
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Compact Left Filter</h1>
+  <h1>US Earthquakes — Left Filters</h1>
   <div class="sub">Size = magnitude, color = depth (km). Pan/zoom the map; filter on left.</div>
 </header>
 
@@ -233,7 +233,7 @@
   const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
-  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
+  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]); // map symbol sizes
 
   // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
@@ -275,54 +275,98 @@
     onChange:r=>{ yearRange=r; render(); }
   });
 
-  // Legend (fixed in the map area)
+  // -------- Legend (uses its own, smaller size scale so circles fit) --------
   function drawLegend(){
     legendG.selectAll("*").remove();
-    const pad=10, cardW=Math.min(260,Math.max(220,width*0.22)), cardH=110;
-    const x0=width-cardW-12, y0=height-cardH-12;
 
-    legendG.append("rect").attr("class","legend-card")
+    const pad = 10;
+    const cardW = Math.min(260, Math.max(220, width * 0.22));
+    const depthBarH = 12;
+
+    // Smaller radius just for legend; tweak [3, 9] to taste
+    const sizeLegend = d3.scaleSqrt().domain(size.domain()).range([3, 9]);
+    const maxR = sizeLegend(size.domain()[1]);
+
+    // Compute card height so nothing overflows
+    const cardH = 26               // "Depth (km)" title line
+                + depthBarH + 12   // bar + gap
+                + 16               // depth ticks labels
+                + 8                // gap before "Magnitude"
+                + 26               // "Magnitude" title & top gap
+                + maxR + 12 + 8;   // circle row (radius) + labels + bottom margin
+
+    const x0 = width - cardW - 12;
+    const y0 = height - cardH - 12;
+
+    // Card
+    legendG.append("rect")
+      .attr("class","legend-card")
       .attr("x",x0).attr("y",y0).attr("width",cardW).attr("height",cardH);
 
-    legendG.append("text").attr("class","legend-title")
-      .attr("x",x0+pad).attr("y",y0+18).text("Depth (km)");
+    // Depth title
+    legendG.append("text")
+      .attr("class","legend-title")
+      .attr("x",x0+pad).attr("y",y0+18)
+      .text("Depth (km)");
 
-    const barW=cardW-pad*2, barH=12, gradId="depthGrad";
-    const defs=legendG.append("defs");
-    const grad=defs.append("linearGradient").attr("id",gradId)
-      .attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
-    const stops=12;
-    for(let i=0;i<=stops;i++){
-      const t=i/stops, val=dDomMin + t*(dDomMax-dDomMin);
+    // Depth gradient bar
+    const barW = cardW - pad*2;
+    const gradId = "depthGrad";
+    const defs = legendG.append("defs");
+    const grad = defs.append("linearGradient")
+      .attr("id",gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
+    const stops = 12;
+    const [d0, d1] = color.domain();
+    for (let i=0;i<=stops;i++){
+      const t=i/stops, val=d0 + t*(d1-d0);
       grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
     }
     legendG.append("rect")
-      .attr("x",x0+pad).attr("y",y0+26).attr("width",barW).attr("height",barH)
-      .attr("rx",6).attr("ry",6).attr("fill",`url(#${gradId})`).attr("stroke","#243142");
+      .attr("x",x0+pad).attr("y",y0+26)
+      .attr("width",barW).attr("height",depthBarH)
+      .attr("rx",6).attr("ry",6)
+      .attr("fill",`url(#${gradId})`).attr("stroke","#243142");
 
-    const tickY=y0+26+barH+12;
-    [dDomMin, Math.round((dDomMin+dDomMax)/2), dDomMax].forEach((t,i)=>{
-      const tx = x0+pad + (barW * i/2);
+    // Depth ticks
+    const tickY = y0 + 26 + depthBarH + 12;
+    [d0, Math.round((d0+d1)/2), d1].forEach((t,i)=>{
+      const tx = x0 + pad + (barW * i/2);
       legendG.append("text").attr("x",tx).attr("y",tickY)
         .attr("text-anchor", i===0?'start':i===2?'end':'middle')
         .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
         .attr("font-size",11).text(t);
     });
 
-    const mags=[magDom[0], (magDom[0]+magDom[1])/2, magDom[1]].map(v=>+v.toFixed(1));
-    const baseY=tickY+8;
-    legendG.append("text").attr("class","legend-title").attr("x",x0+pad).attr("y",baseY+16).text("Magnitude");
-    const cx0=x0+pad+72, gap=(cardW-pad-cx0-10)/(mags.length-1);
+    // Magnitude title
+    const magTitleY = tickY + 8 + 16;
+    legendG.append("text")
+      .attr("class","legend-title")
+      .attr("x",x0+pad).attr("y",magTitleY)
+      .text("Magnitude");
+
+    // Magnitude circles using legend radius
+    const mags = [size.domain()[0], (size.domain()[0]+size.domain()[1])/2, size.domain()[1]].map(v=>+v.toFixed(1));
+
+    // Horizontal padding by maxR to keep circles inside card
+    const cxLeft  = x0 + pad + maxR + 4;
+    const cxRight = x0 + cardW - pad - maxR - 4;
+    const gap = (cxRight - cxLeft) / (mags.length - 1);
+
+    const circlesY = magTitleY + 10 + 16; // a bit below the title
     mags.forEach((m,i)=>{
-      const cx=cx0+i*gap, r=size(m);
-      legendG.append("circle").attr("cx",cx).attr("cy",baseY+26).attr("r",r)
+      const cx = cxLeft + i*gap;
+      const r = sizeLegend(m);
+      legendG.append("circle")
+        .attr("cx",cx).attr("cy",circlesY).attr("r",r)
         .attr("fill","#e6e6e6").attr("fill-opacity",.9)
         .attr("stroke","#000").attr("stroke-opacity",.4);
-      legendG.append("text").attr("x",cx).attr("y",baseY+26+r+12).attr("text-anchor","middle")
+      legendG.append("text")
+        .attr("x",cx).attr("y",circlesY + r + 12).attr("text-anchor","middle")
         .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
         .attr("font-size",11).text(m);
     });
   }
+  // -------------------------------------------------------------------------
 
   function render(){
     const allowNA = document.getElementById("includeNA").checked; // default unchecked
