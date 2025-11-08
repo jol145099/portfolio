@@ -497,3 +497,46 @@ html[data-theme="dark"] .pill {
   height: 1px !important; width: 1px !important;
   overflow: hidden !important; white-space: nowrap !important;
 }
+
+/* ===== Lab 6 additions ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: .75rem;
+  margin: 1rem 0;
+}
+.stats-grid .card {
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--border);
+  border-radius: .6rem;
+  padding: .6rem .8rem;
+}
+.stats-grid .card em {
+  display: block; opacity: .7; margin-top: .2rem;
+}
+.stats-grid .mini { padding: .5rem .6rem; }
+
+.scatter-controls { display:flex; gap:.5rem; align-items:center; margin:.5rem 0 1rem; }
+.pill {
+  display:inline-block; padding:.2rem .5rem; border-radius:.6rem;
+  background: var(--accent-weak-bg); color: var(--text); border: 1px solid var(--border);
+}
+
+#scatter { width: 100%; max-width: 42rem; background: transparent; }
+#scatter .grid line {
+  stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; opacity: .6;
+}
+#tooltip {
+  position: fixed; z-index: 1000;
+  background: var(--card); color: var(--text);
+  padding: .5rem .6rem; border-radius: .5rem;
+  box-shadow: 0 4px 18px rgba(0,0,0,.18);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  font: 12px/1.3 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue";
+}
+.brush .selection {
+  fill: color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
+  stroke: var(--ucsd-gold);
+  stroke-width: 1.2;
+}

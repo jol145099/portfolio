@@ -17,8 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
 const NAV_ITEMS = [
   { href: "/",          text: "Home" },
   { href: "/projects/", text: "Projects" },
-  { href: "/contact/",  text: "Contact" },
   { href: "/resume/",   text: "Resume" },
+  { href: "/contact/",  text: "Contact" },
+  { href: '/meta/', text: 'Meta' },
   { href: "https://github.com/jol145099", text: "GitHub", external: true },
 ];
 
