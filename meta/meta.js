@@ -56,10 +56,10 @@ function renderStats(rows) {
   const distinctAuthors = new Set(rows.map(d => d.author)).size;
 
   stats.innerHTML = `
-    <div class="card"><strong>Total Rows</strong><div>${fmt(totalRows)}</div></div>
-    <div class="card"><strong>Total Lines</strong><div>${fmt(totalLines)}</div></div>
-    <div class="card"><strong>Total Files</strong><div>${fmt(distinctFiles)}</div></div>
-    <div class="card"><strong># of Authors</strong><div>${fmt(distinctAuthors)}</div></div>
+    <div class="card"><strong>Total Rows</strong><em>${fmt(totalRows)}</em></div>
+    <div class="card"><strong>Total Lines</strong><em>${fmt(totalLines)}</em></div>
+    <div class="card"><strong>Total Files</strong><em>${fmt(distinctFiles)}</em></div>
+    <div class="card"><strong># of Authors</strong><em>${fmt(distinctAuthors)}</em></div>
   `;
 
   // extras
@@ -77,13 +77,13 @@ function renderStats(rows) {
   const peakDow = d3.greatest(byDow, d => d.lines);
 
   extras.innerHTML = `
-    <div class="card"><strong>Days Worked</strong><div>${fmt(distinctDays)}</div></div>
+    <div class="card"><strong>Days Worked</strong><em>${fmt(distinctDays)}</em></div>
     <div class="card"><strong>Peak Hour</strong>
-      <div>${peakHour ? `${peakHour.hour}:00` : '—'}</div>
+      <em>${peakHour ? `${peakHour.hour}:00` : '—'}</em>
       <em>${fmt(peakHour?.lines ?? 0)} lines</em>
     </div>
     <div class="card"><strong>Peak Weekday</strong>
-      <div>${peakDow ? dayNames[peakDow.dow] : '—'}</div>
+      <em>${peakDow ? dayNames[peakDow.dow] : '—'}</em>
       <em>${fmt(peakDow?.lines ?? 0)} lines</em>
     </div>
   `;
@@ -98,8 +98,8 @@ function renderStats(rows) {
   grouped.innerHTML = byLang.map(d => `
     <div class="card mini">
       <strong>${d.lang}</strong>
-      <div>${fmt(d.rows)} rows</div>
-      <div>${fmt(d.lines)} lines</div>
+      <em>${fmt(d.rows)} rows</em>
+      <em>${fmt(d.lines)} lines</em>
     </div>
   `).join('');
 
@@ -109,10 +109,10 @@ function renderStats(rows) {
 
   minmax.innerHTML = `
     <div class="card"><strong>Min Lines (File)</strong>
-      <div>${minFile?.file ?? '—'}</div><em>${fmt(minFile?.lines ?? 0)} lines</em>
+      <em>${minFile?.file ?? '—'}</em><em>${fmt(minFile?.lines ?? 0)} lines</em>
     </div>
     <div class="card"><strong>Max Lines (File)</strong>
-      <div>${maxFile?.file ?? '—'}</div><em>${fmt(maxFile?.lines ?? 0)} lines</em>
+      <em>${maxFile?.file ?? '—'}</em><em>${fmt(maxFile?.lines ?? 0)} lines</em>
     </div>
   `;
 }
@@ -136,18 +136,17 @@ function renderScatter(rows) {
   const start = day.offset(day.floor(d0), -1);
   const end   = day.offset(day.ceil(d1),  +1);
 
-  const x = d3.scaleTime().domain([start, end]).range([0, iw]);
+  const uniqueDays = Array.from(new Set(rows.map(d => +d.day)))
+    .sort((a,b) => a - b)
+    .map(ms => new Date(ms));
+
+  const x = d3.scalePoint().domain(uniqueDays).range([0, iw]).padding(0.5);
   const y = d3.scaleLinear().domain([0, 23]).range([ih, 0]).nice();
 
   // area-correct, smaller dots
   const rArea = d3.scaleSqrt()
     .domain([0, d3.quantile(rows.map(d => d.lines).sort(d3.ascending), 0.95) || 1])
     .range([1.8, 9]);
-
-  // ticks only for dates that have data
-  const uniqueDays = Array.from(new Set(rows.map(d => +d.day)))
-    .sort((a,b) => a - b)
-    .map(ms => new Date(ms));
 
   const xAxis = d3.axisBottom(x)
     .tickValues(uniqueDays)
