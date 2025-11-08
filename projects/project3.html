@@ -581,35 +581,40 @@
   drawLegend();
   render();
 
+
   // ----- Reset Filters Button Logic -----
   document.getElementById("resetBtn").addEventListener("click", () => {
-    // Reset magnitude sliders
-    d3.select("#magMinR").property("value", size.domain()[0]);
-    d3.select("#magMaxR").property("value", size.domain()[1]);
-    d3.select("#magMinN").property("value", size.domain()[0]);
-    d3.select("#magMaxN").property("value", size.domain()[1]);
+    function resetDual(minRangeId, maxRangeId, minNumId, maxNumId, minVal, maxVal) {
+      const loR = document.getElementById(minRangeId);
+      const hiR = document.getElementById(maxRangeId);
+      const loN = document.getElementById(minNumId);
+      const hiN = document.getElementById(maxNumId);
+      loR.value = minVal; hiR.value = maxVal;
+      loN.value = minVal; hiN.value = maxVal;
+      hiR.dispatchEvent(new Event('input', { bubbles: true }));
+    }
 
-    // Reset depth sliders
-    d3.select("#depthMinR").property("value", color.domain()[0]);
-    d3.select("#depthMaxR").property("value", color.domain()[1]);
-    d3.select("#depthMinN").property("value", color.domain()[0]);
-    d3.select("#depthMaxN").property("value", color.domain()[1]);
+    resetDual('magMinR', 'magMaxR', 'magMinN', 'magMaxN',
+              sizeScale.domain()[0], sizeScale.domain()[1]);
+
+    resetDual('depthMinR', 'depthMaxR', 'depthMinN', 'depthMaxN',
+              color.domain()[0], color.domain()[1]);
+
+    resetDual('yearMinR', 'yearMaxR', 'yearMinN', 'yearMaxN',
+              yearExt[0], yearExt[1]);
+
     d3.select("#includeNA").property("checked", false);
 
-    // Reset year sliders
-    d3.select("#yearMinR").property("value", yearExtent[0]);
-    d3.select("#yearMaxR").property("value", yearExtent[1]);
-    d3.select("#yearMinN").property("value", yearExtent[0]);
-    d3.select("#yearMaxN").property("value", yearExtent[1]);
-
-    // Reset location input (clear selections)
     d3.select("#locInput").property("value", "");
-    if (typeof selectedLocations !== "undefined") selectedLocations.clear?.();
+    if (typeof selectedLocs !== "undefined") {
+      selectedLocs.clear();
+      if (typeof renderChips === "function") renderChips();
+    }
 
-    // Refresh the map
     render();
   });
-  
+
+
   /* ---------- Zoom ---------- */
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> zoomLayer.attr("transform", ev.transform));
   svg.call(zoom).on("click", (e)=>{
