@@ -219,7 +219,7 @@
   let projection = d3.geoAlbersUsa();
   let path = d3.geoPath(projection);
   function updateProjection(){
-    projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.max(300, Math.min(width,height)*1.2));
+    projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.max(300, Math.min(width,height)*1.8));
     path = d3.geoPath(projection);
     mapG.selectAll("path").attr("d",path);
   }
