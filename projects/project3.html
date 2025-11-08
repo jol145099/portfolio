@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Location Search (AZ / Arizona fixed)</title>
+<title>D3 US Earthquakes — Standardized State Abbrev Tooltip</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
   :root { --bg:#0b0e14; --text:#e8eef7; --muted:#9fb0c6; --grid:#243142; --accent:#1f62d6; --panel:#0f141c; }
-
   *{ box-sizing:border-box }
   body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; height:100vh; overflow:hidden }
 
@@ -28,6 +27,7 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
+  /* Dual range sliders */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{ -webkit-appearance:none; appearance:none; position:absolute; width:100%; background:none; pointer-events:none; }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
@@ -69,7 +69,7 @@
 <body>
 <header>
   <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Color = Depth, Size = Magnitude. Location accepts “AZ” or “Arizona”.</div>
+  <div class="sub">Color=Depth, Size=Magnitude. Tooltip shows City, <b>ST</b> (USPS). Location accepts “AZ” or “Arizona”.</div>
 </header>
 
 <div class="layout">
@@ -164,7 +164,7 @@
 
 <script>
 (async function () {
-  /* ---------------- State maps (abbr <-> full) ---------------- */
+  /* ------------ State maps (abbr <-> full) ------------ */
   const STATE_ABBR_TO_FULL = {
     AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas", CA:"California", CO:"Colorado",
     CT:"Connecticut", DE:"Delaware", FL:"Florida", GA:"Georgia", HI:"Hawaii", ID:"Idaho",
@@ -179,8 +179,43 @@
     PR:"Puerto Rico", GU:"Guam", VI:"Virgin Islands", AS:"American Samoa", MP:"Northern Mariana Islands"
   };
   const STATE_FULL_TO_ABBR = Object.fromEntries(Object.entries(STATE_ABBR_TO_FULL).map(([k,v])=>[v.toLowerCase(), k]));
-  /* ---------------------------------------------------------------- */
 
+  // Normalize a state token to abbr/full
+  function normalizeStateToken(token){
+    if(!token) return {abbr:"", full:""};
+    const t = token.trim();
+    if (STATE_ABBR_TO_FULL[t.toUpperCase()]) return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
+    const ab = STATE_FULL_TO_ABBR[t.toLowerCase()];
+    if (ab) return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] };
+    return { abbr:"", full:"" };
+  }
+
+  // Find a state name anywhere in a string (handles “California earthquake”)
+  function findStateInText(text){
+    if (!text) return null;
+    const t = text.toLowerCase();
+    let best = null;
+    for (const [fullLower, abbr] of Object.entries(STATE_FULL_TO_ABBR)){
+      const idx = t.indexOf(fullLower);
+      if (idx !== -1){
+        if (!best || fullLower.length > best.fullLower.length){
+          best = { abbr, full: STATE_ABBR_TO_FULL[abbr], fullLower };
+        }
+      }
+    }
+    return best ? { abbr: best.abbr, full: best.full } : null;
+  }
+
+  // Tooltip label: City, ST; or ST; else fallback
+  function displayLabel(d){
+    if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
+    if (d.locStAbbr) return d.locStAbbr;
+    if (d.locLabel)  return d.locLabel;
+    if (d.region)    return d.region;
+    return "Location";
+  }
+
+  /* ------------------- Layout & map ------------------- */
   const svg = d3.select("#svg");
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
@@ -196,7 +231,6 @@
   let { width, height } = sizeSVG();
   window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); drawLegend(); render(); });
 
-  // Map
   const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width,height)*1.2);
   const path = d3.geoPath(projection);
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
@@ -205,7 +239,7 @@
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // Data
+  /* ------------------- Data ------------------- */
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
     const depth = (d.depth===""||d.depth==null)?null:+d.depth;
     const mag   = (d.mag===""  ||d.mag==null)?null:+d.mag;
@@ -215,30 +249,24 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Helpers
-  function normalizeStateToken(token){
-    if(!token) return {abbr:"", full:""};
-    const t = token.trim();
-    if (STATE_ABBR_TO_FULL[t.toUpperCase()]) return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
-    const ab = STATE_FULL_TO_ABBR[t.toLowerCase()];
-    if (ab) return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] };
-    return { abbr:t, full:t };
-  }
-
+  // Parse “City, ST” robustly, with fallbacks (“California earthquake” -> CA)
   function cityStateFromPlace(d){
     const place = (d.place||"").trim();
     const region = (d.region||"").trim();
 
+    // "... of City, State"
     let m = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})/i);
     if (m){
       const city = m[1].trim(); const st = normalizeStateToken(m[2]);
-      return city && st.abbr ? {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full} : null;
+      if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
+    // "City, State"
     m = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})\s*$/);
     if (m){
       const city = m[1].trim(); const st = normalizeStateToken(m[2]);
-      return city && st.abbr ? {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full} : null;
+      if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
+    // Region "City, State" or just a state
     if (region){
       const parts = region.split(",").map(s=>s.trim());
       if (parts.length===2){
@@ -246,9 +274,15 @@
         return { label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full };
       } else if (parts.length===1){
         const st = normalizeStateToken(parts[0]);
-        return { label: st.abbr, city:"", stAbbr:st.abbr, stFull:st.full };
+        if (st.abbr) return { label: st.abbr, city:"", stAbbr:st.abbr, stFull:st.full };
       }
     }
+    // NEW: match “California earthquake”, “Northern California”, etc.
+    let found = findStateInText(place) || findStateInText(region);
+    if (found){
+      return { label: found.abbr, city:"", stAbbr:found.abbr, stFull:found.full };
+    }
+    // Last resort: take last two comma parts from place
     const tail = place.split(',').map(s=>s.trim());
     if (tail.length>=2){
       const st = normalizeStateToken(tail[tail.length-1]);
@@ -260,23 +294,13 @@
 
   points.forEach(d => {
     const cs = cityStateFromPlace(d);
-    d.locLabel = cs.label;
+    d.locLabel = cs.label;      // canonical text (City, ST) or ST
     d.locCity  = cs.city;
     d.locStAbbr= cs.stAbbr;
     d.locStFull= cs.stFull;
   });
 
-function displayLabel(d){
-  // Always prefer "City, ST". If no city, just "ST".
-  if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
-  if (d.locStAbbr) return d.locStAbbr;
-  // Fallbacks if we couldn't parse a state (rare/territories)
-  if (d.locLabel) return d.locLabel;         // already "City, ST" form if present
-  if (d.region)   return d.region;           // last resort
-  return "Location";
-}
-
-  // Build unique locations with search forms and state info
+  /* ------------- Build location list for autocomplete ------------- */
   const locMap = new Map(); // label -> {label,count,forms:Set, stAbbr, stFull}
   for (const d of points){
     if (!d.locLabel) continue;
@@ -286,7 +310,7 @@ function displayLabel(d){
     const withFullLower = (withFull || key).toLowerCase();
 
     if (!locMap.has(key)){
-      locMap.set(key, { label:key, count:1, forms:new Set([labelLower, withFullLower]), stAbbr:d.locStAbbr, stFull:d.locStFull });
+      locMap.set(key, { label:key, count:1, forms:new Set([labelLower, withFullLower]), stAbbr:d.locStAbbr||"", stFull:d.locStFull||"" });
     } else {
       const e = locMap.get(key);
       e.count++;
@@ -298,7 +322,7 @@ function displayLabel(d){
     .map(e => ({ label:e.label, count:e.count, forms:Array.from(e.forms), stAbbr:e.stAbbr, stFull:e.stFull }))
     .sort((a,b)=> d3.descending(a.count,b.count) || d3.ascending(a.label,b.label));
 
-  // Domains
+  /* ------------------- Scales & UI state ------------------- */
   const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
   const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
   const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
@@ -311,11 +335,9 @@ function displayLabel(d){
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
   const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
 
-  // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
-  let locExact = "";
+  let locExact = ""; // exact canonical label ("City, ST") or "ST"
 
-  // Dual sliders
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
@@ -331,11 +353,20 @@ function displayLabel(d){
     hiN.onchange=()=>sync(+loN.value,+hiN.value);
     sync(domain[0],domain[1]);
   }
-  initDual({ domain:magDom, step:0.1, ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'}, labelElId:'magVals', onChange:r=>{ magRange=r; render(); }});
-  initDual({ domain:[dDomMin,dDomMax], step:10, ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'}, labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }});
-  initDual({ domain:yearDom, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
+  initDual({ domain:magDom, step:0.1,
+    ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
+    labelElId:'magVals', onChange:r=>{ magRange=r; render(); }
+  });
+  initDual({ domain:[dDomMin,dDomMax], step:10,
+    ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},
+    labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }
+  });
+  initDual({ domain:yearDom, step:1,
+    ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},
+    labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }
+  });
 
-  /* ---------------- Autocomplete with state-aware matching ---------------- */
+  /* ---------------- Autocomplete (AZ / Arizona; max 10) ---------------- */
   const locInput = document.getElementById("locInput");
   const locPanel = document.getElementById("locSuggest");
   let activeIdx = -1;
@@ -360,7 +391,6 @@ function displayLabel(d){
     locPanel.innerHTML = "";
     if (!qTrim){ closePanel(); return; }
 
-    // Detect if query is purely a state token (abbr or full)
     const abbrOnly = STATE_ABBR_TO_FULL[qTrim.toUpperCase()] ? qTrim.toUpperCase() : "";
     const fullOnlyAbbr = STATE_FULL_TO_ABBR[qLower] || "";
 
@@ -370,21 +400,17 @@ function displayLabel(d){
       const ab = abbrOnly || fullOnlyAbbr; // USPS code
       results = locEntries.filter(e => e.stAbbr === ab).slice(0, 10);
     } else {
-      // General query
       const qCanon = canonQuery(qTrim).toLowerCase();
-
-      const starts = [];
-      const contains = [];
+      const starts = [], contains = [];
 
       for (const e of locEntries){
         const city = e.label.split(",")[0].trim().toLowerCase();
-        const stAb = e.stAbbr.toLowerCase();
+        const stAb = (e.stAbbr||"").toLowerCase();
         const stFull = (e.stFull||"").toLowerCase();
 
         const startsMatch = city.startsWith(qLower) ||
                             (`${city}, ${stAb}`).startsWith(qCanon) ||
                             (`${city}, ${stFull}`).startsWith(qLower);
-
         const includesMatch = (!startsMatch) && (
           city.includes(qLower) ||
           (", " + stAb).includes(", " + qLower) ||
@@ -404,7 +430,7 @@ function displayLabel(d){
     for (const {label,count} of results){
       const div = document.createElement("div");
       div.className = "loc-item";
-      div.textContent = label;
+      div.textContent = label;         // canonical "City, ST" or "ST"
       div.title = `${label} (${count})`;
       div.addEventListener("mousedown", (e)=>{ e.preventDefault(); applyLocation(label); });
       locPanel.appendChild(div);
@@ -415,7 +441,7 @@ function displayLabel(d){
 
   function applyLocation(label){
     locInput.value = label;
-    locExact = label;
+    locExact = label; // canonical "City, ST" (or "ST")
     closePanel();
     render();
   }
@@ -425,7 +451,6 @@ function displayLabel(d){
     if (!v){ locExact = ""; closePanel(); render(); return; }
     renderSuggestions(v);
   });
-
   locInput.addEventListener("keydown", (e)=>{
     const items = Array.from(locPanel.children);
     if (e.key === "ArrowDown" && items.length){
@@ -452,13 +477,11 @@ function displayLabel(d){
       closePanel();
     }
   });
-
   document.addEventListener("click", (e)=>{
     if (!document.querySelector(".locbox").contains(e.target)) closePanel();
   });
-  /* ------------------------------------------------------------------------ */
 
-  // Legend (compact)
+  /* ---------------- Legend ---------------- */
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad = 10;
@@ -504,6 +527,7 @@ function displayLabel(d){
     });
   }
 
+  /* ---------------- Render ---------------- */
   function render(){
     const allowNA = document.getElementById("includeNA").checked;
 
@@ -517,18 +541,6 @@ function displayLabel(d){
 
     const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=>d.time+"|"+i);
 
-    function tipHTML(d){
-      // Standardize to “City, ST” or just “ST”. Fallback to original place/region for non-US.
-      const locText = d.locStAbbr
-        ? (d.locCity ? `${d.locCity}, ${d.locStAbbr}` : d.locStAbbr)
-        : (d.place || d.region || "Location");
-      return `
-        <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${displayLabel(d)}</span></div>
-        <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
-        <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
-      `;
-    }
-
     sel.enter().append("circle")
       .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
       .attr("r", d => size(d.mag ?? magDom[0]))
@@ -540,7 +552,11 @@ function displayLabel(d){
       .attr("fill-opacity", .85)
       .on("mousemove", (event, d) => {
         const [x,y] = d3.pointer(event, document.querySelector(".view"));
-        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(tipHTML(d));
+        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
+          <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${displayLabel(d)}</span></div>
+          <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
+          <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
+        `);
       })
       .on("mouseleave", ()=> tooltip.style("opacity", 0));
 
@@ -551,10 +567,6 @@ function displayLabel(d){
       .attr("transform", d => {
         const p = projection([d.lon, d.lat]);
         return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
-      })
-      .on("mousemove", (event, d) => {
-        const [x,y] = d3.pointer(event, document.querySelector(".view"));
-        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(tipHTML(d));
       });
 
     sel.exit().remove();
@@ -563,7 +575,7 @@ function displayLabel(d){
   drawLegend();
   render();
 
-  // Zoom
+  /* ---------------- Zoom ---------------- */
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
     zoomLayer.attr("transform", ev.transform);
   });
