@@ -41,11 +41,56 @@ function renderStats() {
   const distinctFiles = new Set(rows.map(d => d.file)).size;
   const distinctAuthors = new Set(rows.map(d => d.author)).size;
 
+  // ----- NEW EXTRAS -----
+  const extras = document.getElementById('extras');
+
+  // 1) # of days worked on the site (distinct calendar dates)
+  const distinctDays = new Set(rows.map(d => d.dt.toDateString())).size;
+
+  // 2) Longest file = file with most total lines edited
+  const fileTotals = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.file)
+                       .map(([file, lines]) => ({ file, lines }));
+  const longestFile = d3.greatest(fileTotals, d => d.lines);
+
+  // 3) Time of day most work is done (by total lines)
+  const byHour = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.hour)
+                   .map(([hour, lines]) => ({ hour, lines }));
+  const peakHour = d3.greatest(byHour, d => d.lines);
+
+  // 4) Day of week most work is done (by total lines)
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const byDow = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.dow)
+                  .map(([dow, lines]) => ({ dow, lines }));
+  const peakDow = d3.greatest(byDow, d => d.lines);
+
+  // Render the four new cards
+  extras.innerHTML = `
+    <div class="card">
+      <strong>Days worked</strong>
+      <div>${fmt(distinctDays)}</div>
+    </div>
+    <div class="card">
+      <strong>Longest file (most lines)</strong>
+      <div title="${longestFile?.file ?? ''}">${longestFile?.file ?? '—'}</div>
+      <em>${fmt(longestFile?.lines ?? 0)} lines</em>
+    </div>
+    <div class="card">
+      <strong>Peak hour</strong>
+      <div>${peakHour ? `${peakHour.hour}:00` : '—'}</div>
+      <em>${fmt(peakHour?.lines ?? 0)} lines</em>
+    </div>
+    <div class="card">
+      <strong>Peak weekday</strong>
+      <div>${peakDow ? dayNames[peakDow.dow] : '—'}</div>
+      <em>${fmt(peakDow?.lines ?? 0)} lines</em>
+    </div>
+  `;
+
   stats.innerHTML = `
-    <div class="card"><strong>Total records</strong><div>${fmt(totalRows)}</div></div>
-    <div class="card"><strong>Total lines</strong><div>${fmt(totalLines)}</div></div>
-    <div class="card"><strong>Distinct files</strong><div>${fmt(distinctFiles)}</div></div>
-    <div class="card"><strong>Distinct authors</strong><div>${fmt(distinctAuthors)}</div></div>
+    <div class="card"><strong>Total Rows</strong><div>${fmt(totalRows)}</div></div>
+    <div class="card"><strong>Total Lines</strong><div>${fmt(totalLines)}</div></div>
+    <div class="card"><strong>Total Files</strong><div>${fmt(distinctFiles)}</div></div>
+    <div class="card"><strong># of Authors</strong><div>${fmt(distinctAuthors)}</div></div>
   `;
 
   // Grouped aggregates (by language/type)  :contentReference[oaicite:5]{index=5}
@@ -70,8 +115,8 @@ function renderStats() {
   const maxFile = d3.greatest(byFile, d => d.lines);
 
   minmax.innerHTML = `
-    <div class="card"><strong>Min lines (file)</strong><div>${minFile?.file ?? '—'}</div><em>${fmt(minFile?.lines ?? 0)}</em></div>
-    <div class="card"><strong>Max lines (file)</strong><div>${maxFile?.file ?? '—'}</div><em>${fmt(maxFile?.lines ?? 0)}</em></div>
+    <div class="card"><strong>Min Lines (File)</strong><div>${minFile?.file ?? '—'}</div><em>${fmt(minFile?.lines ?? 0)}</em></div>
+    <div class="card"><strong>Max Lines (File)</strong><div>${maxFile?.file ?? '—'}</div><em>${fmt(maxFile?.lines ?? 0)}</em></div>
   `;
 }
 
