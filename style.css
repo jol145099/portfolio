@@ -512,7 +512,7 @@ html[data-theme="dark"] .pill {
   padding: .6rem .8rem;
 }
 .stats-grid .card em {
-  display: block; opacity: .7; margin-top: .2rem; font-weight: 600; color:#006A96; font-family: monospace; font-style: normal;
+  display: block; opacity: .7; margin-top: .2rem; font-weight: 600; color:#006A96; font-family: monospace; font-style: normal; font-size: medium;
 }
 .stats-grid .mini { padding: .5rem .6rem; }
 

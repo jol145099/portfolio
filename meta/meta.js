@@ -152,7 +152,10 @@ function renderScatter(rows) {
     .tickValues(uniqueDays)
     .tickFormat(d3.timeFormat('%m/%d'));
 
-  const yAxis = d3.axisLeft(y).ticks(8).tickFormat(h => `${h}:00`);
+  const yAxis = d3.axisLeft(y).ticks(8).tickFormat(h => {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 === 0 ? 12 : h % 12;
+    return `${hour}${ampm}`;})
 
   g.append('g').attr('class', 'x-axis').attr('transform', `translate(0,${ih})`).call(xAxis);
   g.append('g').attr('class', 'y-axis').call(yAxis);
