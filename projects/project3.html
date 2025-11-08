@@ -85,7 +85,7 @@
 <body>
 <header>
   <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Stable rendering with defensive guards. Multi-select cities and/or whole states (AZ, CA…).</div>
+  <div class="sub">Interactive D3.js map of U.S. earthquakes over the past 100 years (including Alaska, Hawaii & Puerto Rico/USVI). Each quake is a dot: larger for higher magnitude and color coded for depth. Hover tooltips to reveal details.</div>
 </header>
 
 <div class="layout">
@@ -129,7 +129,7 @@
       <div class="section">
         <div class="row">
           <div class="label">Location</div>
-          <div class="valuespan helper">Add cities or States.</div>
+          <div class="valuespan helper">Add cities or States</div>
         </div>
         <div class="locbox">
           <input id="locInput" type="text" placeholder="Type: Los Angeles, CA • CA • California…" autocomplete="off">
@@ -435,7 +435,7 @@
       } else {
         div.textContent = r.label; const sm=document.createElement("small"); sm.textContent=r.count; div.appendChild(sm);
       }
-      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r.label); });
+      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r.label); locInput.value = ""; closePanel();});
       locPanel.appendChild(div);
     }
     activeIdx = -1; openPanel();
