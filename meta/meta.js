@@ -41,49 +41,21 @@ function renderStats() {
   const distinctFiles = new Set(rows.map(d => d.file)).size;
   const distinctAuthors = new Set(rows.map(d => d.author)).size;
 
-  // ----- NEW EXTRAS -----
   const extras = document.getElementById('extras');
-
-  // 1) # of days worked on the site (distinct calendar dates)
   const distinctDays = new Set(rows.map(d => d.dt.toDateString())).size;
-
-  // 2) Longest file = file with most total lines edited
-  const fileTotals = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.file)
-                       .map(([file, lines]) => ({ file, lines }));
-  const longestFile = d3.greatest(fileTotals, d => d.lines);
-
-  // 3) Time of day most work is done (by total lines)
   const byHour = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.hour)
                    .map(([hour, lines]) => ({ hour, lines }));
   const peakHour = d3.greatest(byHour, d => d.lines);
-
-  // 4) Day of week most work is done (by total lines)
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const byDow = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.dow)
                   .map(([dow, lines]) => ({ dow, lines }));
   const peakDow = d3.greatest(byDow, d => d.lines);
 
-  // Render the four new cards
   extras.innerHTML = `
-    <div class="card">
-      <strong>Days worked</strong>
-      <div>${fmt(distinctDays)}</div>
-    </div>
-    <div class="card">
-      <strong>Longest file (most lines)</strong>
-      <div title="${longestFile?.file ?? ''}">${longestFile?.file ?? '—'}</div>
-      <em>${fmt(longestFile?.lines ?? 0)} lines</em>
-    </div>
-    <div class="card">
-      <strong>Peak hour</strong>
-      <div>${peakHour ? `${peakHour.hour}:00` : '—'}</div>
-      <em>${fmt(peakHour?.lines ?? 0)} lines</em>
-    </div>
-    <div class="card">
-      <strong>Peak weekday</strong>
-      <div>${peakDow ? dayNames[peakDow.dow] : '—'}</div>
-      <em>${fmt(peakDow?.lines ?? 0)} lines</em>
-    </div>
+    <div class="card"><strong>Days worked</strong><div>${fmt(distinctDays)}</div></div>
+    <div class="card"><strong>Longest File (most lines)</strong><div title="${longestFile?.file ?? ''}">${longestFile?.file ?? '—'}</div><em>${fmt(longestFile?.lines ?? 0)} lines</em></div>
+    <div class="card"><strong>Peak Hour</strong><div>${peakHour ? `${peakHour.hour}:00` : '—'}</div><em>${fmt(peakHour?.lines ?? 0)} lines</em></div>
+    <div class="card"><strong>Peak Weekday</strong><div>${peakDow ? dayNames[peakDow.dow] : '—'}</div><em>${fmt(peakDow?.lines ?? 0)} lines</em></div>
   `;
 
   stats.innerHTML = `
@@ -126,104 +98,111 @@ function renderScatter() {
   svg.selectAll('*').remove();
   if (!rows.length) return;
 
-  const W = 700, H = 420, M = { t: 20, r: 20, b: 40, l: 50 };
+  // ── Size & margins
+  const W = 640, H = 320, M = { t: 18, r: 14, b: 44, l: 52 };
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
 
-  const g = svg.append('g').attr('transform', `translate(${M.l},${M.t})`);
+  const g = svg
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .append('g')
+    .attr('transform', `translate(${M.l},${M.t})`);
 
-  // Scales
-  const x = d3.scaleLinear().domain([0, 23]).range([0, iw]); // hours 0–23
-  const y = d3.scalePoint().domain([0,1,2,3,4,5,6]).range([0, ih]).padding(0.5); // days 0–6
-  const rArea = d3.scaleSqrt() // Step 4.1 + 4.2: area-correct size  :contentReference[oaicite:7]{index=7}
-    .domain([0, d3.quantile(rows.map(d=>d.lines).sort(d3.ascending), 0.95) || 1])
-    .range([2, 18]);
+  // ── Scales
+  // X: calendar date (by d.dt)
+  const x = d3.scaleTime()
+    .domain(d3.extent(rows, d => d.dt))
+    .range([0, iw]);
 
-  // Axes (Step 2.2)
-  const xAxis = d3.axisBottom(x).ticks(12).tickFormat(d => `${d}:00`);
-  const yAxis = d3.axisLeft(y).tickFormat(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]);
+  // Y: hour of day (0–23)
+  const y = d3.scaleLinear()
+    .domain([0, 23])
+    .range([ih, 0])
+    .nice();
+
+  // Radius: smaller dots (quantile cap + smaller range)
+  const rArea = d3.scaleSqrt()
+    .domain([0, d3.quantile(rows.map(d => d.lines).sort(d3.ascending), 0.95) || 1])
+    .range([1.5, 8]);     // <— smaller bubbles
+
+  // ── Axes
+  const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat('%b %d'));
+  const yAxis = d3.axisLeft(y).ticks(6).tickFormat(h => `${h}:00`);
 
   g.append('g').attr('transform', `translate(0,${ih})`).call(xAxis);
   g.append('g').call(yAxis);
 
-  // Grid (Step 2.3 - horizontal)
+  // Horizontal grid lines every ~4 hours
   g.append('g')
     .attr('class', 'grid')
     .selectAll('line')
-    .data(y.domain())
+    .data(y.ticks(6))
     .join('line')
     .attr('x1', 0).attr('x2', iw)
     .attr('y1', d => y(d)).attr('y2', d => y(d));
 
-  // Dots (Step 2.1 + Step 4.1/4.2)
+  // ── Dots
   const dots = g.append('g').attr('class', 'dots')
     .selectAll('circle').data(rows)
     .join('circle')
-    .attr('cx', d => x(d.hour))
-    .attr('cy', d => y(d.dow))
+    .attr('cx', d => x(d.dt))
+    .attr('cy', d => y(d.hour))
     .attr('r', d => rArea(d.lines))
     .attr('fill', 'var(--ucsd-navy)')
     .attr('opacity', 0.85);
 
-  // Tooltip (Step 3)
+  // ── Tooltip
   const tip = d3.select('#tooltip');
+  const fmtDate = d3.timeFormat('%b %d, %Y %H:%M');
 
   function showTip(d, evt) {
     tip.attr('hidden', null)
        .html(`
         <strong>${d.file}</strong><br>
         ${d.author ?? '—'}<br>
-        ${d.dt.toLocaleString()}<br>
-        lines: ${fmt(d.lines)}
+        ${fmtDate(d.dt)}<br>
+        lines: ${d3.format(',')(d.lines)}
       `);
-    positionTip(evt);
+    const { clientX:xv, clientY:yv } = evt;
+    tip.style('left', `${xv + 12}px`).style('top', `${yv + 12}px`);
   }
   function hideTip() { tip.attr('hidden', true); }
-  function positionTip(evt) {
-    const { clientX:x, clientY:y } = evt;
-    tip.style('left', `${x + 12}px`).style('top', `${y + 12}px`);
-  }
 
-  // Step 4.3: Voronoi hover – better hit-testing for overlapping dots  :contentReference[oaicite:8]{index=8}
-  const delaunay = d3.Delaunay.from(rows, d => x(d.hour), d => y(d.dow));
+  // Better hover with Voronoi on new coordinates
+  const delaunay = d3.Delaunay.from(rows, d => x(d.dt), d => y(d.hour));
   const vor = delaunay.voronoi([0,0,iw,ih]);
 
-  const hover = g.append('g').attr('class', 'hover')
-    .selectAll('path').data(rows).join('path')
+  g.append('g').selectAll('path')
+    .data(rows).join('path')
     .attr('d', (_, i) => vor.renderCell(i))
     .attr('fill', 'transparent')
-    .on('mousemove', function(evt, d) {
-      showTip(d, evt);
-    })
+    .on('mousemove', (evt, d) => showTip(d, evt))
     .on('mouseleave', hideTip);
 
-  // ---------- Step 5: Brushing ----------
+  // ── Brushing (keeps your selection counters working)
   const brush = d3.brush()
     .extent([[0,0],[iw,ih]])
     .on('start brush end', brushed);
 
-  const brushG = g.append('g').attr('class', 'brush').call(brush);
+  g.append('g').attr('class', 'brush').call(brush);
 
   function brushed({selection}) {
-    const selCount = $('#sel-count');
-    const langBreak = $('#lang-breakdown');
+    const selCount = document.getElementById('sel-count');
+    const langBreak = document.getElementById('lang-breakdown');
 
     let sel = [];
     if (selection) {
       const [[x0,y0],[x1,y1]] = selection;
       sel = rows.filter(d => {
-        const px = x(d.hour), py = y(d.dow);
+        const px = x(d.dt), py = y(d.hour);
         return x0 <= px && px <= x1 && y0 <= py && py <= y1;
       });
     }
 
-    // Update visuals
     dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : 'var(--ucsd-navy)')
         .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.85);
 
-    // 5.5: show count  :contentReference[oaicite:9]{index=9}
-    selCount.textContent = `Selected: ${fmt(sel.length)}`;
+    selCount.textContent = `Selected: ${d3.format(',')(sel.length)}`;
 
-    // 5.6: language breakdown  :contentReference[oaicite:10]{index=10}
     if (!sel.length) {
       langBreak.textContent = 'Languages: —';
     } else {
@@ -233,6 +212,7 @@ function renderScatter() {
     }
   }
 }
+
 
 renderStats();
 renderScatter();
