@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Left Filters + Fitting Legend</title>
+<title>D3 US Earthquakes — Final Version</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -16,10 +16,10 @@
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
-  /* --- Layout: left sidebar + map --- */
+  /* Layout: left sidebar + map */
   .layout{
     position:absolute; inset:52px 0 0 0;
-    display:grid; grid-template-columns: 340px 1fr; /* adjust width if needed */
+    display:grid; grid-template-columns: 340px 1fr; /* adjust sidebar width if needed */
     gap:0;
   }
   @media (max-width:900px){ .layout{ grid-template-columns: 280px 1fr; } }
@@ -40,7 +40,7 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Slim dual sliders (stacked range inputs) */
+  /* Dual sliders (stack two range inputs) */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{
     -webkit-appearance:none; appearance:none;
@@ -61,13 +61,14 @@
   .slider2 input.lower{ z-index:1 }
   .slider2 input.upper{ z-index:2 }
 
-  /* Min/Max row compact and flush under slider */
+  /* Min/Max inputs row (compact) */
   .row.values{ grid-template-columns: 1fr; }
   .row.values .label{ display:none; }
 
+  /* Controls spacing between Min and Max (20px middle gap) */
   .valuebox{
     display:grid;
-    grid-template-columns: auto 70px 20px auto 70px; /* 20px controls space between Min/Max */
+    grid-template-columns: auto 70px 20px auto 70px;
     align-items:center;
     gap:6px;
     color:var(--muted);
@@ -79,10 +80,10 @@
     padding:3px 6px; width:70px;
   }
 
-  .checkboxrow label{
-    display:flex; align-items:center; gap:6px;
-    color:var(--muted); font-size:11.5px;
-    margin-top:4px;
+  /* Let checkbox sit on its own full-width line */
+  .valuebox label{
+    grid-column:1 / -1;
+    justify-self:start;
   }
 
   .view{ position:relative }
@@ -101,12 +102,12 @@
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Left Filters</h1>
-  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom the map; filter on left.</div>
+  <h1>US Earthquakes — Interactive Map</h1>
+  <div class="sub">Color = Depth, Size = Magnitude. Filter earthquakes using controls on the left.</div>
 </header>
 
 <div class="layout">
-  <!-- Sidebar filters -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="filters">
 
@@ -146,8 +147,13 @@
             <span>Max</span><input id="depthMaxN" type="number" step="10">
           </div>
         </div>
-        <div class="checkboxrow">
-          <label><input id="includeNA" type="checkbox"> Include N/A depth</label>
+        <!-- Checkbox on its own new line -->
+        <div class="row values" style="margin-top:-4px;">
+          <div class="valuebox">
+            <label style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px;">
+              <input id="includeNA" type="checkbox"> Include N/A depth
+            </label>
+          </div>
         </div>
       </div>
 
@@ -171,13 +177,13 @@
       </div>
 
       <div class="section" style="padding-top:4px;">
-        <div class="label" style="opacity:.85;">Tip: click empty map to reset zoom.</div>
+        <div class="label" style="opacity:.85;">Tip: Click empty map area to reset zoom.</div>
       </div>
 
     </div>
   </aside>
 
-  <!-- Map + legend -->
+  <!-- Map + Legend -->
   <div class="view">
     <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="tooltip" id="tooltip"></div>
@@ -233,7 +239,7 @@
   const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
 
   const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
-  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]); // map symbol sizes
+  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]); // map circles
 
   // UI state
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
@@ -275,7 +281,7 @@
     onChange:r=>{ yearRange=r; render(); }
   });
 
-  // -------- Legend (uses its own, smaller size scale so circles fit) --------
+  // Legend (uses its own smaller radius scale so circles fit)
   function drawLegend(){
     legendG.selectAll("*").remove();
 
@@ -283,17 +289,17 @@
     const cardW = Math.min(260, Math.max(220, width * 0.22));
     const depthBarH = 12;
 
-    // Smaller radius just for legend; tweak [3, 9] to taste
+    // Smaller legend-only circle sizes
     const sizeLegend = d3.scaleSqrt().domain(size.domain()).range([3, 9]);
     const maxR = sizeLegend(size.domain()[1]);
 
-    // Compute card height so nothing overflows
-    const cardH = 26               // "Depth (km)" title line
-                + depthBarH + 12   // bar + gap
-                + 16               // depth ticks labels
+    // Compute card height to avoid overflow
+    const cardH = 26               // "Depth (km)" title
+                + depthBarH + 12   // gradient bar + gap
+                + 16               // depth tick labels
                 + 8                // gap before "Magnitude"
-                + 26               // "Magnitude" title & top gap
-                + maxR + 12 + 8;   // circle row (radius) + labels + bottom margin
+                + 16 + 10          // "Magnitude" title line + small gap
+                + maxR + 12 + 8;   // circles row + labels + bottom pad
 
     const x0 = width - cardW - 12;
     const y0 = height - cardH - 12;
@@ -315,10 +321,9 @@
     const defs = legendG.append("defs");
     const grad = defs.append("linearGradient")
       .attr("id",gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
-    const stops = 12;
     const [d0, d1] = color.domain();
-    for (let i=0;i<=stops;i++){
-      const t=i/stops, val=d0 + t*(d1-d0);
+    for (let i=0;i<=12;i++){
+      const t=i/12, val=d0 + t*(d1-d0);
       grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
     }
     legendG.append("rect")
@@ -344,10 +349,10 @@
       .attr("x",x0+pad).attr("y",magTitleY)
       .text("Magnitude");
 
-    // Magnitude circles using legend radius
+    // Magnitude circles (legend-specific radii)
     const mags = [size.domain()[0], (size.domain()[0]+size.domain()[1])/2, size.domain()[1]].map(v=>+v.toFixed(1));
 
-    // Horizontal padding by maxR to keep circles inside card
+    // Keep circles inside the card width using padding by maxR
     const cxLeft  = x0 + pad + maxR + 4;
     const cxRight = x0 + cardW - pad - maxR - 4;
     const gap = (cxRight - cxLeft) / (mags.length - 1);
@@ -366,7 +371,6 @@
         .attr("font-size",11).text(m);
     });
   }
-  // -------------------------------------------------------------------------
 
   function render(){
     const allowNA = document.getElementById("includeNA").checked; // default unchecked
