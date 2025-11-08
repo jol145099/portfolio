@@ -522,7 +522,7 @@ html[data-theme="dark"] .pill {
   background: var(--accent-weak-bg); color: var(--text); border: 1px solid var(--border);
 }
 
-#scatter { width: 100%; max-width: 42rem; background: transparent; }
+#scatter { width: 100%; max-width: 960px; height: 540px;  display: block; background: transparent; }
 #scatter .grid line {
   stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; opacity: .6;
 }
