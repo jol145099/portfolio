@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Left Filters + Location</title>
+<title>D3 US Earthquakes — Left Filters + Location Filter</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -16,20 +16,16 @@
   header h1{ font-size:16px; margin:0; font-weight:600 }
   header .sub{ color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis }
 
-  /* --- Layout: left sidebar + map --- */
   .layout{
     position:absolute; inset:52px 0 0 0;
-    display:grid; grid-template-columns: 340px 1fr; /* adjust width if needed */
-    gap:0;
+    display:grid; grid-template-columns: 340px 1fr;
   }
-  @media (max-width:900px){ .layout{ grid-template-columns: 280px 1fr; } }
 
   .sidebar{
     border-right:1px solid var(--grid);
     background:rgba(15,20,28,.94);
     padding:16px 14px;
     overflow-y:auto;
-    overflow-x:hidden; /* no horizontal scroll */
   }
 
   .filters{ display:grid; gap:16px }
@@ -40,43 +36,30 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Slim dual sliders (stacked range inputs) */
-  .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
+  .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column:1/span 2 }
   .slider2 input[type="range"]{
     -webkit-appearance:none; appearance:none;
     position:absolute; width:100%; background:none; pointer-events:none;
   }
-  .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
-  .slider2 input[type="range"]::-moz-range-track{ height:5px; border-radius:999px; background:#dfe8f6; }
   .slider2 input[type="range"]::-webkit-slider-thumb{
     -webkit-appearance:none; appearance:none;
     width:12px; height:12px; border-radius:50%;
-    background:#ffffff; border:2px solid var(--accent);
+    background:#fff; border:2px solid var(--accent);
     margin-top:-4px; pointer-events:auto;
   }
-  .slider2 input[type="range"]::-moz-range-thumb{
-    width:12px; height:12px; border-radius:50%;
-    background:#ffffff; border:2px solid var(--accent); pointer-events:auto;
-  }
-  .slider2 input.lower{ z-index:1 }
-  .slider2 input.upper{ z-index:2 }
-
-  /* Min/Max row compact and flush under slider */
-  .row.values{ grid-template-columns: 1fr; }
-  .row.values .label{ display:none; }
 
   .valuebox{
     display:grid;
-    grid-template-columns: auto 70px 20px auto 70px; /* 20px space between Min/Max */
+    grid-template-columns:auto 70px 1fr auto 70px;
     align-items:center;
     gap:6px;
     color:var(--muted);
     font-size:11.5px;
   }
-  input[type="number"]{
+  input[type="number"], select{
     background:#0f141c; color:var(--text);
     border:1px solid var(--grid); border-radius:6px;
-    padding:3px 6px; width:70px;
+    padding:3px 6px; width:100%;
   }
 
   .checkboxrow label{
@@ -84,19 +67,6 @@
     color:var(--muted); font-size:11.5px;
     margin-top:4px;
   }
-
-  /* Location inputs */
-  .locationbox{ display:grid; gap:8px }
-  .locationbox input[type="text"]{
-    width:100%; padding:6px 8px; border-radius:6px;
-    border:1px solid var(--grid); background:#0f141c; color:var(--text);
-  }
-  .locationbox select{
-    width:100%; border-radius:6px; border:1px solid var(--grid);
-    background:#0f141c; color:var(--text); padding:4px 6px;
-    font-size:12px;
-  }
-  .helper{ color:var(--muted); font-size:11px }
 
   .view{ position:relative }
   svg{ width:100%; height:100%; display:block }
@@ -114,14 +84,21 @@
 </head>
 <body>
 <header>
-  <h1>US Earthquakes — Left Filters + Location</h1>
-  <div class="sub">Size = magnitude, color = depth (km). Pan/zoom the map; filter on left.</div>
+  <h1>US Earthquakes — Left Filters</h1>
+  <div class="sub">Size = magnitude, color = depth (km). Filter on left.</div>
 </header>
 
 <div class="layout">
-  <!-- Sidebar filters -->
   <aside class="sidebar">
     <div class="filters">
+
+      <!-- Location Filter -->
+      <div class="section">
+        <div class="row">
+          <div class="label">Location</div>
+          <select id="locationFilter"></select>
+        </div>
+      </div>
 
       <!-- Magnitude -->
       <div class="section">
@@ -183,27 +160,9 @@
         </div>
       </div>
 
-      <!-- Location -->
-      <div class="section">
-        <div class="row">
-          <div class="label">Location</div>
-          <div class="valuespan helper">Type or select</div>
-        </div>
-        <div class="locationbox">
-          <input id="locText" type="text" placeholder="Location contains… (place / region)">
-          <select id="regionSelect" multiple size="6" title="Region (multi-select)"></select>
-          <div class="helper">Tip: select 1+ regions (Ctrl/Cmd-click). Leave empty to include all.</div>
-        </div>
-      </div>
-
-      <div class="section" style="padding-top:4px;">
-        <div class="label" style="opacity:.85;">Tip: click empty map to reset zoom.</div>
-      </div>
-
     </div>
   </aside>
 
-  <!-- Map + legend -->
   <div class="view">
     <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="tooltip" id="tooltip"></div>
@@ -216,19 +175,9 @@
   const zoomLayer = svg.append("g");
   const mapG = zoomLayer.append("g");
   const ptsG = zoomLayer.append("g");
-  const legendG = svg.append("g");
   const tooltip = d3.select("#tooltip");
 
-  function sizeSVG(){
-    const r = document.querySelector(".view").getBoundingClientRect();
-    svg.attr("viewBox", [0,0,r.width,r.height]);
-    return { width:r.width, height:r.height };
-  }
-  let { width, height } = sizeSVG();
-  window.addEventListener("resize", ()=>{ ({width,height}=sizeSVG()); drawLegend(); render(); });
-
-  // Projection & map
-  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(Math.min(width,height)*1.2);
+  const projection = d3.geoAlbersUsa();
   const path = d3.geoPath(projection);
   const us = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
   const states = topojson.feature(us, us.objects.states);
@@ -236,252 +185,76 @@
   mapG.append("path").datum(states).attr("class","states").attr("d", path);
   mapG.append("path").datum(borders).attr("class","state-borders").attr("d", path);
 
-  // Data
   const data = await d3.csv("us_earthquakes_m4.5.csv", d=>{
-    const depth = (d.depth===""||d.depth==null)?null:+d.depth;
-    const mag   = (d.mag===""  ||d.mag==null)?null:+d.mag;
-    const lat=+d.latitude, lon=+d.longitude;
+    const depth = d.depth ? +d.depth : null;
+    const mag = d.mag ? +d.mag : null;
+    const lat = +d.latitude, lon = +d.longitude;
     const year = d.time ? new Date(d.time).getUTCFullYear() : null;
     return { time:d.time, year, place:d.place||"", region:d.region||"", depth, mag, lat, lon };
   });
-  const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Domains
-  const depthVals = points.map(d=>d.depth).filter(v=>v!=null && isFinite(v));
-  const depthExt  = d3.extent(depthVals.length ? depthVals : [0,700]);
-  const dDomMin   = Math.max(0, Math.floor((depthExt[0] ?? 0)));
-  const dDomMax   = Math.min(700, Math.ceil((depthExt[1] ?? 700)));
+  const regions = Array.from(new Set(data.map(d=>d.region).filter(Boolean))).sort();
+  const locationSelect = d3.select("#locationFilter");
+  locationSelect.append("option").text("All Locations").attr("value", "");
+  regions.forEach(r=>locationSelect.append("option").text(r).attr("value", r));
 
-  const magVals = points.map(d=>d.mag).filter(v=>v!=null && isFinite(v));
-  const magDom  = d3.extent(magVals.length ? magVals : [4.5,8]);
+  const points = data.filter(d=>isFinite(d.lat)&&isFinite(d.lon));
+  const magDom = d3.extent(points.map(d=>d.mag).filter(v=>v));
+  const depthDom = d3.extent(points.map(d=>d.depth).filter(v=>v));
+  const yearDom = d3.extent(points.map(d=>d.year).filter(v=>v));
+  const color = d3.scaleSequential(depthDom, d3.interpolateTurbo);
+  const size = d3.scaleSqrt().domain(magDom).range([1.8, 11]);
 
-  const yearVals = points.map(d=>d.year).filter(y=>y!=null && isFinite(y));
-  const yearDom  = d3.extent(yearVals.length ? yearVals : [1950, 2025]);
+  let magRange=[...magDom], depthRange=[...depthDom], yearRange=[...yearDom], location="";
 
-  const color = d3.scaleSequential([dDomMin, dDomMax], d3.interpolateTurbo);
-  const size  = d3.scaleSqrt().domain(magDom).range([1.8, 11]); // map symbol sizes
-
-  // UI state
-  let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
-  let locTextValue = "";
-  let selectedRegions = new Set();
-
-  // Populate Region multi-select from data (sorted by frequency)
-  const regionCounts = d3.rollup(points, v=>v.length, d=> (d.region || "").trim())
-                         .entries()
-                         .filter(([k])=>k); // drop empty
-  regionCounts.sort((a,b)=> d3.descending(a[1], b[1]) || d3.ascending(a[0], b[0]));
-  const regionSelect = document.getElementById('regionSelect');
-  regionCounts.forEach(([region, cnt])=>{
-    const opt = document.createElement('option');
-    opt.value = region;
-    opt.textContent = `${region} (${cnt})`;
-    regionSelect.appendChild(opt);
-  });
-
-  // Dual-range initializer
-  function initDual({domain,step,ids,onChange,labelElId}){
-    const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
-    const label=document.getElementById(labelElId);
-    [loR.min,hiR.min,loN.min,hiN.min]=[domain[0],domain[0],domain[0],domain[0]];
-    [loR.max,hiR.max,loN.max,hiN.max]=[domain[1],domain[1],domain[1],domain[1]];
-    [loR.step,hiR.step,loN.step,hiN.step]=[step,step,step,step];
-    const clamp=v=>Math.min(domain[1],Math.max(domain[0],step>=1?Math.round(v/step)*step:Math.round(v*10)/10));
-    const paint=(a,b)=>{const p=v=>100*(v-domain[0])/(domain[1]-domain[0]);loR.style.background=`linear-gradient(to right,#dfe8f6 ${p(domain[0])}%,var(--accent) ${p(a)}%,var(--accent) ${p(b)}%,#dfe8f6 ${p(domain[1])}%)`;};
-    const sync=(a,b,notify=true)=>{a=clamp(a);b=clamp(b);if(a>b)[a,b]=[b,a];[loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];paint(a,b);if(label){const f=step===0.1?x=>(+x).toFixed(1):x=>x;label.textContent=`${f(a)} – ${f(b)}`;}if(notify)onChange([a,b]);};
-    loR.oninput=()=>sync(+loR.value,+hiR.value);
-    hiR.oninput=()=>sync(+loR.value,+hiR.value);
-    loN.onchange=()=>sync(+loN.value,+hiN.value);
-    hiN.onchange=()=>sync(+hiN.value,+loN.value,false); // ensure correct order on manual edits
-    hiN.onchange=()=>sync(+loN.value,+hiN.value);
-    sync(domain[0],domain[1]);
-  }
-
-  // Initialize sliders
-  initDual({
-    domain:magDom, step:0.1,
-    ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},
-    labelElId:'magVals',
-    onChange:r=>{ magRange=r; render(); }
-  });
-  initDual({
-    domain:[dDomMin,dDomMax], step:10,
-    ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},
-    labelElId:'depthVals',
-    onChange:r=>{ depthRange=r; render(); }
-  });
-  initDual({
-    domain:yearDom, step:1,
-    ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},
-    labelElId:'yearVals',
-    onChange:r=>{ yearRange=r; render(); }
-  });
-
-  // Legend (uses its own, smaller size scale so circles fit)
-  function drawLegend(){
-    legendG.selectAll("*").remove();
-
-    const pad = 10;
-    const cardW = Math.min(260, Math.max(220, width * 0.22));
-    const depthBarH = 12;
-
-    const sizeLegend = d3.scaleSqrt().domain(size.domain()).range([3, 9]); // smaller in legend
-    const maxR = sizeLegend(size.domain()[1]);
-
-    const cardH = 26               // "Depth (km)" title
-                + depthBarH + 12   // gradient bar + gap
-                + 16               // depth ticks
-                + 8                // gap
-                + 26               // "Magnitude" title & gap
-                + maxR + 12 + 8;   // circles row + labels + bottom pad
-
-    const x0 = width - cardW - 12;
-    const y0 = height - cardH - 12;
-
-    // Card
-    legendG.append("rect")
-      .attr("class","legend-card")
-      .attr("x",x0).attr("y",y0).attr("width",cardW).attr("height",cardH);
-
-    // Depth title
-    legendG.append("text")
-      .attr("class","legend-title")
-      .attr("x",x0+pad).attr("y",y0+18)
-      .text("Depth (km)");
-
-    // Depth gradient bar
-    const barW = cardW - pad*2;
-    const gradId = "depthGrad";
-    const defs = legendG.append("defs");
-    const grad = defs.append("linearGradient")
-      .attr("id",gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
-    const [d0, d1] = color.domain();
-    for (let i=0;i<=12;i++){
-      const t=i/12, val=d0 + t*(d1-d0);
-      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", color(val));
-    }
-    legendG.append("rect")
-      .attr("x",x0+pad).attr("y",y0+26)
-      .attr("width",barW).attr("height",depthBarH)
-      .attr("rx",6).attr("ry",6)
-      .attr("fill",`url(#${gradId})`).attr("stroke","#243142");
-
-    // Depth ticks
-    const tickY = y0 + 26 + depthBarH + 12;
-    [d0, Math.round((d0+d1)/2), d1].forEach((t,i)=>{
-      const tx = x0 + pad + (barW * i/2);
-      legendG.append("text").attr("x",tx).attr("y",tickY)
-        .attr("text-anchor", i===0?'start':i===2?'end':'middle')
-        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
-        .attr("font-size",11).text(t);
-    });
-
-    // Magnitude title
-    const magTitleY = tickY + 8 + 16;
-    legendG.append("text")
-      .attr("class","legend-title")
-      .attr("x",x0+pad).attr("y",magTitleY)
-      .text("Magnitude");
-
-    // Magnitude circles using legend radius
-    const mags = [size.domain()[0], (size.domain()[0]+size.domain()[1])/2, size.domain()[1]].map(v=>+v.toFixed(1));
-    const cxLeft  = x0 + pad + maxR + 4;
-    const cxRight = x0 + cardW - pad - maxR - 4;
-    const gap = (cxRight - cxLeft) / (mags.length - 1);
-    const circlesY = magTitleY + 10 + 16;
-
-    mags.forEach((m,i)=>{
-      const cx = cxLeft + i*gap;
-      const r = sizeLegend(m);
-      legendG.append("circle")
-        .attr("cx",cx).attr("cy",circlesY).attr("r",r)
-        .attr("fill","#e6e6e6").attr("fill-opacity",.9)
-        .attr("stroke","#000").attr("stroke-opacity",.4);
-      legendG.append("text")
-        .attr("x",cx).attr("y",circlesY + r + 12).attr("text-anchor","middle")
-        .attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6')
-        .attr("font-size",11).text(m);
-    });
-  }
-
-  // Render points with all filters
   function render(){
-    const allowNA = document.getElementById("includeNA").checked; // default unchecked
-
-    // collect selected regions
-    selectedRegions = new Set(Array.from(regionSelect.selectedOptions).map(o=>o.value));
-
-    const locFilter = (d) => {
-      if (!locTextValue && selectedRegions.size===0) return true;
-      let textOK = true, regionOK = true;
-      if (locTextValue){
-        const hay = ((d.place||"") + " " + (d.region||"")).toLowerCase();
-        textOK = hay.includes(locTextValue);
-      }
-      if (selectedRegions.size>0){
-        regionOK = selectedRegions.has((d.region||"").trim());
-      }
-      return textOK && regionOK;
-    };
-
+    const allowNA=document.getElementById("includeNA").checked;
     const filtered = points.filter(d=>{
-      const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
-      const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
-      const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
-      return magOK && yearOK && depthOK && locFilter(d);
+      const magOK=d.mag>=magRange[0]&&d.mag<=magRange[1];
+      const depthOK=d.depth==null?allowNA:(d.depth>=depthRange[0]&&d.depth<=depthRange[1]);
+      const yearOK=d.year>=yearRange[0]&&d.year<=yearRange[1];
+      const locOK=!location||d.region===location;
+      return magOK&&depthOK&&yearOK&&locOK;
     });
 
-    const sel = ptsG.selectAll("circle.quake").data(filtered, (d,i)=>d.time+"|"+i);
-
+    const sel=ptsG.selectAll("circle.quake").data(filtered,(d,i)=>d.time+"|"+i);
     sel.enter().append("circle")
-      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
-      .attr("r", d => size(d.mag ?? magDom[0]))
-      .attr("transform", d => {
-        const p = projection([d.lon, d.lat]);
-        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
+      .attr("class",d=>"quake"+(d.depth==null?" nodata":""))
+      .attr("r",d=>size(d.mag))
+      .attr("transform",d=>`translate(${projection([d.lon,d.lat])})`)
+      .attr("fill",d=>d.depth==null?"#9aa0a6":color(d.depth))
+      .attr("fill-opacity",.85)
+      .on("mousemove",(e,d)=>{
+        const [x,y]=d3.pointer(e,document.querySelector(".view"));
+        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1)
+          .html(`<div><b>${d.mag?.toFixed(1)||"M?"}</b> — <span style="color:var(--muted)">${d.place||d.region}</span></div>
+          <div>Depth: <b>${d.depth==null?"N/A":Math.round(d.depth)+" km"}</b></div>
+          <div style="color:var(--muted)">${new Date(d.time).toUTCString()}</div>`);
       })
-      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
-      .attr("fill-opacity", .85)
-      .on("mousemove", (event, d) => {
-        const [x,y] = d3.pointer(event, document.querySelector(".view"));
-        tooltip.style("left",(x+12)+"px").style("top",(y-12)+"px").style("opacity",1).html(`
-          <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${d.place || d.region || "Location"}</span></div>
-          <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
-          <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
-        `);
-      })
-      .on("mouseleave", ()=> tooltip.style("opacity", 0));
-
-    sel
-      .attr("r", d => size(d.mag ?? magDom[0]))
-      .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
-      .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
-      .attr("transform", d => {
-        const p = projection([d.lon, d.lat]);
-        return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
-      });
-
+      .on("mouseleave",()=>tooltip.style("opacity",0));
     sel.exit().remove();
   }
 
-  drawLegend();
+  function initDual({domain,step,ids,onChange,labelElId}){
+    const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
+    const label=document.getElementById(labelElId);
+    const sync=(a,b)=>{a=Math.max(domain[0],a);b=Math.min(domain[1],b);if(a>b)[a,b]=[b,a];
+      [loR.value,hiR.value,loN.value,hiN.value]=[a,b,a,b];
+      if(label)label.textContent=`${a.toFixed(step===0.1?1:0)} – ${b.toFixed(step===0.1?1:0)}`;onChange([a,b]);};
+    loR.min=loN.min=domain[0];hiR.max=hiN.max=domain[1];loR.step=hiR.step=loN.step=hiN.step=step;
+    loR.oninput=()=>sync(+loR.value,+hiR.value);hiR.oninput=()=>sync(+loR.value,+hiR.value);
+    loN.onchange=()=>sync(+loN.value,+hiN.value);hiN.onchange=()=>sync(+loN.value,+hiN.value);
+    sync(domain[0],domain[1]);
+  }
+
+  initDual({domain:magDom,step:0.1,ids:{lowerRange:'magMinR',upperRange:'magMaxR',lowerNum:'magMinN',upperNum:'magMaxN'},labelElId:'magVals',onChange:r=>{magRange=r;render();}});
+  initDual({domain:depthDom,step:10,ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'},labelElId:'depthVals',onChange:r=>{depthRange=r;render();}});
+  initDual({domain:yearDom,step:1,ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'},labelElId:'yearVals',onChange:r=>{yearRange=r;render();}});
+
+  locationSelect.on("change",e=>{location=e.target.value;render();});
+  document.getElementById("includeNA").addEventListener("change",render);
+
   render();
-
-  // Zoom (legend stays fixed)
-  const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
-    zoomLayer.attr("transform", ev.transform);
-  });
-  svg.call(zoom).on("click", (e)=>{
-    if (e.target === svg.node()) svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
-  });
-
-  // Events
-  document.getElementById("includeNA").addEventListener("change", render);
-  document.getElementById("locText").addEventListener("input", d=>{
-    locTextValue = d.target.value.trim().toLowerCase();
-    render();
-  });
-  regionSelect.addEventListener("change", render);
 })();
 </script>
 </body>
