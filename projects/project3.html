@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>D3 US Earthquakes — Multi-Select Location (States & Cities)</title>
+<title>D3 US Earthquakes — Multi-select Location (State + City)</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
@@ -27,7 +27,7 @@
   .label{ color:var(--muted); font-size:12px }
   .valuespan{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums }
 
-  /* Dual sliders */
+  /* Dual range sliders */
   .slider2{ position:relative; height:26px; display:flex; align-items:center; grid-column: 1 / span 2 }
   .slider2 input[type="range"]{ -webkit-appearance:none; appearance:none; position:absolute; width:100%; background:none; pointer-events:none; }
   .slider2 input[type="range"]::-webkit-slider-runnable-track{ height:5px; border-radius:999px; background:#dfe8f6; }
@@ -43,22 +43,21 @@
 
   .checkboxrow label{ display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; margin-top:4px; }
 
-  /* Location input + suggestions + chips */
+  /* Location autocomplete + chips */
   .locbox{ position:relative; display:grid; gap:8px; }
   .locbox input[type="text"]{ width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--grid); background:#0f141c; color:#e8eef7; min-width:0; }
   .helper{ color:var(--muted); font-size:11px }
 
-  .loc-suggest{ position:absolute; left:0; right:0; top: calc(100% + 4px); background:var(--panel); border:1px solid var(--grid); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); max-height:220px; overflow-y:auto; z-index:20; display:none; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#101826; border:1px solid #233144; font-size:12px; }
+  .chip .x{ cursor:pointer; opacity:.7; font-weight:700 }
+  .chip .x:hover{ opacity:1 }
+
+  .loc-suggest{ position:absolute; left:0; right:0; top: calc(100% + 4px); background:var(--panel); border:1px solid var(--grid); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25); max-height:240px; overflow-y:auto; z-index:20; display:none; }
   .loc-item{ padding:6px 8px; font-size:12px; color:#e8eef7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .loc-item small{ color:var(--muted); font-size:11px; margin-left:6px }
   .loc-item:hover, .loc-item.active{ background:#162031; }
 
-  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
-  .chip{ display:inline-flex; align-items:center; gap:6px; background:#142033; border:1px solid #243142; color:#cfe4ff; border-radius:999px; padding:4px 8px; font-size:12px; }
-  .chip .x{ cursor:pointer; font-weight:700; opacity:.8 }
-  .chip.state{ background:#18273a; }
-  .chipbar{ display:flex; align-items:center; justify-content:space-between; gap:8px }
-  .clearbtn{ background:transparent; border:1px solid #334760; color:#b9c9de; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer }
-  .clearbtn:hover{ background:#122136; }
   .view{ position:relative }
   svg{ width:100%; height:100%; display:block }
 
@@ -76,7 +75,7 @@
 <body>
 <header>
   <h1>US Earthquakes — Interactive Map</h1>
-  <div class="sub">Multi-select **states** (CA, AZ, …) and **cities** (City, ST). Tooltip always shows City, <b>ST</b>.</div>
+  <div class="sub">Select multiple cities and/or entire states (AZ, CA…). Tooltip shows City, <b>ST</b>.</div>
 </header>
 
 <div class="layout">
@@ -120,19 +119,22 @@
         </div>
       </div>
 
-      <!-- Location -->
+      <!-- Location (multi-select) -->
       <div class="section">
-        <div class="row"><div class="label">Location</div><div class="valuespan helper">Type a state (AZ/Arizona) or city (City, ST). Multi-select supported.</div></div>
+        <div class="row">
+          <div class="label">Location</div>
+          <div class="valuespan helper">Add cities (“Long Beach, CA”) or whole states (“CA/California”)</div>
+        </div>
         <div class="locbox">
-          <input id="locInput" type="text" placeholder="Phoenix, AZ  •  CA  •  Arizona…" autocomplete="off">
+          <input id="locInput" type="text" placeholder="Type: Phoenix, AZ • CA • Arizona…" autocomplete="off">
+          <div id="chips" class="chips"></div>
           <div id="locSuggest" class="loc-suggest"></div>
-
-          <div class="chipbar">
-            <div class="chips" id="locChips"></div>
-            <button id="clearLoc" class="clearbtn" title="Clear all">Clear</button>
+          <div class="helper">Up to 10 suggestions. Click to add. Use Backspace on empty box to remove the last chip. “Clear” removes all.</div>
+        </div>
+        <div class="row values">
+          <div class="valuebox" style="grid-template-columns:auto auto;">
+            <button id="clearLoc" style="background:#0f141c;color:#e8eef7;border:1px solid var(--grid);border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
           </div>
-
-          <div class="helper">Up to 10 suggestions. Click to add. Use × to remove.</div>
         </div>
       </div>
 
@@ -167,19 +169,17 @@
   };
   const STATE_FULL_TO_ABBR = Object.fromEntries(Object.entries(STATE_ABBR_TO_FULL).map(([k,v])=>[v.toLowerCase(), k]));
 
-  const isAbbr = s => !!STATE_ABBR_TO_FULL[(s||"").toUpperCase()];
-  const fullToAbbr = s => STATE_FULL_TO_ABBR[(s||"").toLowerCase()] || "";
+  const isUSPS = s => /^[A-Z]{2}$/.test(s);
 
   function normalizeStateToken(token){
     if(!token) return {abbr:"", full:""};
     const t = token.trim();
-    if (isAbbr(t)) return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
-    const ab = fullToAbbr(t);
+    if (STATE_ABBR_TO_FULL[t.toUpperCase()]) return { abbr:t.toUpperCase(), full: STATE_ABBR_TO_FULL[t.toUpperCase()] };
+    const ab = STATE_FULL_TO_ABBR[t.toLowerCase()];
     if (ab) return { abbr:ab, full:STATE_ABBR_TO_FULL[ab] };
     return { abbr:"", full:"" };
   }
 
-  // Find a state name anywhere in a string (handles “… California Earthquake”)
   function findStateInText(text){
     if (!text) return null;
     const t = text.toLowerCase();
@@ -195,13 +195,11 @@
     return best ? { abbr: best.abbr, full: best.full } : null;
   }
 
-  // Remove leading "The 1933 " etc. from a city token
   function cleanCityToken(s){
     if (!s) return s;
     return s.replace(/^\s*(?:the\s+)?\d{3,4}\s+/i, "").trim();
   }
 
-  // Tooltip label
   function displayLabel(d){
     if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
     if (d.locStAbbr) return d.locStAbbr;
@@ -244,42 +242,33 @@
   });
   const points = data.filter(d => isFinite(d.lat) && isFinite(d.lon));
 
-  // Parse City/ST robustly
   function cityStateFromPlace(d){
     const place = (d.place||"").trim();
     const region = (d.region||"").trim();
 
-    // "... of City, State [Earthquake]"
     let m = place.match(/of\s+([^,]+)\s*,\s*([A-Za-z.\s-]{2,})(?:\s+Earthquake)?\s*$/i);
     if (m){
-      const city = cleanCityToken(m[1]);
-      const st   = normalizeStateToken(m[2]);
+      const city = cleanCityToken(m[1]); const st = normalizeStateToken(m[2]);
       if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
-    // "City, State [Earthquake]"
     m = place.match(/^\s*([^,]+)\s*,\s*([A-Za-z.\s-]{2,})(?:\s+Earthquake)?\s*$/i);
     if (m){
-      const city = cleanCityToken(m[1]);
-      const st   = normalizeStateToken(m[2]);
+      const city = cleanCityToken(m[1]); const st = normalizeStateToken(m[2]);
       if (city && st.abbr) return {label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full};
     }
-    // Region "City, State" or just a state
     if (region){
       const parts = region.split(",").map(s=>s.trim());
       if (parts.length===2){
-        const city = cleanCityToken(parts[0]);
-        const st   = normalizeStateToken(parts[1]);
+        const city = cleanCityToken(parts[0]); const st = normalizeStateToken(parts[1]);
         return { label:`${city}, ${st.abbr}`, city, stAbbr:st.abbr, stFull:st.full };
       } else if (parts.length===1){
         const st = normalizeStateToken(parts[0]);
         if (st.abbr) return { label: st.abbr, city:"", stAbbr:st.abbr, stFull:st.full };
       }
     }
-    // “… California …”
     const found = findStateInText(place) || findStateInText(region);
     if (found) return { label: found.abbr, city:"", stAbbr:found.abbr, stFull:found.full };
 
-    // Last resort
     const tail = place.split(',').map(s=>s.trim());
     if (tail.length>=2){
       const st = normalizeStateToken(tail[tail.length-1]);
@@ -293,12 +282,12 @@
     const cs = cityStateFromPlace(d);
     d.locLabel = cs.label;      // "City, ST" or "ST"
     d.locCity  = cs.city;
-    d.locStAbbr= cs.stAbbr;     // USPS code
+    d.locStAbbr= cs.stAbbr;
     d.locStFull= cs.stFull;
   });
 
   /* ------------- Build location entries (canonical display) ------------- */
-  const locMap = new Map(); // key: canonical label -> {label,count,forms:Set, stAbbr, stFull}
+  const locMap = new Map(); // canonical label -> {label,count,forms:Set, stAbbr, stFull}
   for (const d of points){
     if (!d.locLabel) continue;
     const key = d.locLabel;
@@ -342,32 +331,10 @@
 
   let magRange=[magDom[0],magDom[1]], depthRange=[dDomMin,dDomMax], yearRange=[yearDom[0],yearDom[1]];
 
-  // NEW: multi-select state & city filters
-  const selectedStates = new Set();  // USPS codes, e.g., "CA"
-  const selectedCities = new Set();  // canonical "City, ST"
-  const chipsDiv = document.getElementById("locChips");
-  const clearBtn = document.getElementById("clearLoc");
+  // NEW: multi-select set of canonical labels.
+  const selectedLocs = new Set(); // holds "City, ST" and/or "ST"
 
-  function renderChips(){
-    chipsDiv.innerHTML = "";
-    for (const st of Array.from(selectedStates).sort()){
-      const chip = document.createElement("span");
-      chip.className = "chip state";
-      chip.innerHTML = `<span>${st}</span><span class="x" title="Remove">×</span>`;
-      chip.querySelector(".x").onclick = ()=>{ selectedStates.delete(st); renderChips(); render(); };
-      chipsDiv.appendChild(chip);
-    }
-    for (const city of Array.from(selectedCities).sort()){
-      const chip = document.createElement("span");
-      chip.className = "chip";
-      chip.innerHTML = `<span>${city}</span><span class="x" title="Remove">×</span>`;
-      chip.querySelector(".x").onclick = ()=>{ selectedCities.delete(city); renderChips(); render(); };
-      chipsDiv.appendChild(chip);
-    }
-  }
-  clearBtn.onclick = ()=>{ selectedStates.clear(); selectedCities.clear(); renderChips(); render(); };
-
-  // Dual sliders
+  /* ---------------- Dual sliders init ---------------- */
   function initDual({domain,step,ids,onChange,labelElId}){
     const [loR,hiR,loN,hiN]=[ids.lowerRange,ids.upperRange,ids.lowerNum,ids.upperNum].map(id=>document.getElementById(id));
     const label=document.getElementById(labelElId);
@@ -387,9 +354,11 @@
   initDual({ domain:[dDomMin,dDomMax], step:10, ids:{lowerRange:'depthMinR',upperRange:'depthMaxR',lowerNum:'depthMinN',upperNum:'depthMaxN'}, labelElId:'depthVals', onChange:r=>{ depthRange=r; render(); }});
   initDual({ domain:yearDom, step:1, ids:{lowerRange:'yearMinR',upperRange:'yearMaxR',lowerNum:'yearMinN',upperNum:'yearMaxN'}, labelElId:'yearVals', onChange:r=>{ yearRange=r; render(); }});
 
-  /* ---------------- Autocomplete (multi-select) ---------------- */
+  /* ---------------- Location: suggestions + chips ---------------- */
   const locInput = document.getElementById("locInput");
   const locPanel = document.getElementById("locSuggest");
+  const chipsBox = document.getElementById("chips");
+  const clearBtn = document.getElementById("clearLoc");
   let activeIdx = -1;
 
   function closePanel(){ locPanel.style.display = "none"; activeIdx=-1; }
@@ -399,20 +368,27 @@
     const parts = q.split(",").map(s=>s.trim());
     if (parts.length>=2){
       const stateTok = parts.pop();
-      const ab = isAbbr(stateTok) ? stateTok.toUpperCase() : fullToAbbr(stateTok);
+      const ab = STATE_ABBR_TO_FULL[stateTok.toUpperCase()] ? stateTok.toUpperCase()
+               : (STATE_FULL_TO_ABBR[stateTok.toLowerCase()] || "");
       return parts.join(", ") + (ab ? (", " + ab) : "");
     }
     return q;
   }
 
-  function addSelection(label){
-    // label is canonical: "City, ST" or "ST"
-    const trimmed = label.trim();
-    if (trimmed.length===2 && isAbbr(trimmed)) {
-      selectedStates.add(trimmed);
-    } else {
-      selectedCities.add(trimmed);
+  function renderChips(){
+    chipsBox.innerHTML = "";
+    if (selectedLocs.size===0) return;
+    for (const label of selectedLocs){
+      const span = document.createElement("span");
+      span.className = "chip";
+      span.innerHTML = `${label} <span class="x" title="Remove">×</span>`;
+      span.querySelector(".x").onclick = ()=>{ selectedLocs.delete(label); renderChips(); render(); };
+      chipsBox.appendChild(span);
     }
+  }
+
+  function addSelection(label){
+    selectedLocs.add(label);   // label can be "City, ST" OR "ST"
     renderChips();
     render();
   }
@@ -423,24 +399,17 @@
     locPanel.innerHTML = "";
     if (!qTrim){ closePanel(); return; }
 
-    const abbrOnly = isAbbr(qTrim) ? qTrim.toUpperCase() : "";
-    const fullOnlyAbbr = fullToAbbr(qLower) || "";
+    const abbrOnly = STATE_ABBR_TO_FULL[qTrim.toUpperCase()] ? qTrim.toUpperCase() : "";
+    const fullOnlyAbbr = STATE_FULL_TO_ABBR[qLower] || "";
 
     let results = [];
 
     if (abbrOnly || fullOnlyAbbr){
-      const ab = abbrOnly || fullOnlyAbbr;
-
-      // First row: add whole-state chip
-      const stateItem = document.createElement("div");
-      stateItem.className = "loc-item";
-      stateItem.textContent = `Add state: ${ab}`;
-      stateItem.style.fontWeight = "600";
-      stateItem.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(ab); locInput.value=""; closePanel(); });
-      locPanel.appendChild(stateItem);
-
-      // Then show top cities in that state
-      results = locEntries.filter(e => e.stAbbr === ab).slice(0, 9); // 1 row used by "Add state"
+      const ab = abbrOnly || fullOnlyAbbr; // USPS code
+      // special top item: whole state
+      const stateTop = { label: ab, count: 0, _state:true };
+      const cityList = locEntries.filter(e => e.stAbbr === ab).slice(0, 9); // leave room for stateTop
+      results = [stateTop, ...cityList];
     } else {
       const qCanon = canonQuery(qTrim).toLowerCase();
       const starts = [], contains = [];
@@ -448,32 +417,49 @@
       for (const e of locEntries){
         const matchedStarts = e.forms.some(f => f && (f.startsWith(qCanon) || f.startsWith(qLower)));
         const matchedContains = !matchedStarts && e.forms.some(f => f && f.includes(qLower));
-
         if (matchedStarts) starts.push(e);
         else if (matchedContains) contains.push(e);
-
         if (starts.length >= 10) break;
       }
       results = starts.concat(contains).slice(0,10);
     }
 
-    for (const {label,count} of results){
+    if (!results.length){ closePanel(); return; }
+
+    for (const r of results){
       const div = document.createElement("div");
       div.className = "loc-item";
-      div.textContent = label;        // canonical display
-      div.title = `${label} (${count})`;
-      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(label); locInput.value=""; closePanel(); });
+      if (r._state){
+        div.textContent = r.label + " (all)";
+        const sm = document.createElement("small"); sm.textContent = "state";
+        div.appendChild(sm);
+      } else {
+        div.textContent = r.label;            // canonical "City, ST" or "ST"
+        const sm = document.createElement("small"); sm.textContent = r.count;
+        div.appendChild(sm);
+      }
+      div.addEventListener("mousedown", (e)=>{ e.preventDefault(); addSelection(r._state ? r.label : r.label); });
       locPanel.appendChild(div);
     }
-
-    if (!locPanel.childElementCount){ closePanel(); return; }
     activeIdx = -1;
     openPanel();
   }
 
+  function applyTyped(){
+    const typed = locInput.value.trim();
+    if (!typed){ return; }
+    // Add state if pure state
+    const ab = STATE_ABBR_TO_FULL[typed.toUpperCase()] ? typed.toUpperCase()
+             : (STATE_FULL_TO_ABBR[typed.toLowerCase()] || "");
+    if (ab){ addSelection(ab); return; }
+    // Else add if exact canonical label exists
+    const typedCanon = canonQuery(typed);
+    if (locMap.has(typedCanon)) { addSelection(typedCanon); return; }
+    if (locMap.has(typed)) { addSelection(typed); return; }
+  }
+
   locInput.addEventListener("input", (e)=>{
     const v = e.target.value;
-    if (!v){ closePanel(); return; }
     renderSuggestions(v);
   });
   locInput.addEventListener("keydown", (e)=>{
@@ -488,16 +474,19 @@
       activeIdx = Math.max(-1, activeIdx-1);
       items.forEach((el,i)=> el.classList.toggle("active", i===activeIdx));
     } else if (e.key === "Enter"){
+      e.preventDefault();
       if (activeIdx>=0 && items[activeIdx]){
-        e.preventDefault();
-        items[activeIdx].dispatchEvent(new MouseEvent("mousedown", {bubbles:true}));
+        const txt = items[activeIdx].textContent.replace(/\s+\(all\)\s*state?$/,'').trim();
+        addSelection(txt);
       } else {
-        // Try to interpret typed as state or exact city
-        const typed = locInput.value.trim();
-        const ab = isAbbr(typed) ? typed.toUpperCase() : fullToAbbr(typed);
-        if (ab){ addSelection(ab); locInput.value=""; closePanel(); }
-        else if (locMap.has(canonQuery(typed))) { addSelection(canonQuery(typed)); locInput.value=""; closePanel(); }
+        applyTyped();
       }
+      locInput.value = "";
+      closePanel();
+    } else if (e.key === "Backspace" && !locInput.value){
+      // remove last chip
+      const last = Array.from(selectedLocs).pop();
+      if (last){ selectedLocs.delete(last); renderChips(); render(); }
     } else if (e.key === "Escape"){
       closePanel();
     }
@@ -505,16 +494,21 @@
   document.addEventListener("click", (e)=>{
     if (!document.querySelector(".locbox").contains(e.target)) closePanel();
   });
+  clearBtn.onclick = ()=>{ selectedLocs.clear(); renderChips(); render(); };
 
   /* ---------------- Legend ---------------- */
+  const color = d3.scaleSequential([Math.max(0, Math.floor((d3.extent(points.filter(p=>p.depth!=null).map(p=>p.depth))[0] ?? 0))), 
+                                   Math.min(700, Math.ceil((d3.extent(points.filter(p=>p.depth!=null).map(p=>p.depth))[1] ?? 700)))], 
+                                   d3.interpolateTurbo);
+
   function drawLegend(){
     legendG.selectAll("*").remove();
     const pad = 10;
     const cardW = Math.min(260, Math.max(220, width * 0.22));
     const depthBarH = 12;
 
-    const sizeLegend = d3.scaleSqrt().domain(size.domain()).range([3, 9]);
-    const maxR = sizeLegend(size.domain()[1]);
+    const size = d3.scaleSqrt().domain(d3.extent(points.map(d=>d.mag).filter(v=>v!=null))).range([3, 9]);
+    const maxR = size(size.domain()[1]);
 
     const cardH = 26 + depthBarH + 12 + 16 + 8 + 26 + maxR + 12 + 8;
     const x0 = width - cardW - 12;
@@ -537,37 +531,41 @@
       legendG.append("text").attr("x",tx).attr("y",tickY).attr("text-anchor", i===0?'start':i===2?'end':'middle').attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6').attr("font-size",11).text(t);
     });
 
+    const mags = d3.extent(points.map(d=>d.mag).filter(v=>v!=null));
+    const sScale = d3.scaleSqrt().domain(mags).range([3, 9]);
+    const magVals = [mags[0], (mags[0]+mags[1])/2, mags[1]].map(v=>+v.toFixed(1));
+
     const magTitleY = tickY + 8 + 16;
     legendG.append("text").attr("class","legend-title").attr("x",x0+pad).attr("y",magTitleY).text("Magnitude");
 
-    const mags = [size.domain()[0], (size.domain()[0]+size.domain()[1])/2, size.domain()[1]].map(v=>+v.toFixed(1));
-    const cxLeft  = x0 + pad + maxR + 4;
-    const cxRight = x0 + cardW - pad - maxR - 4;
-    const gap = (cxRight - cxLeft) / (mags.length - 1);
+    const cxLeft  = x0 + pad + 9 + 4;
+    const cxRight = x0 + cardW - pad - 9 - 4;
+    const gap = (cxRight - cxLeft) / (magVals.length - 1);
     const circlesY = magTitleY + 10 + 16;
-    mags.forEach((m,i)=>{
-      const cx = cxLeft + i*gap, r = sizeLegend(m);
+    magVals.forEach((m,i)=>{
+      const cx = cxLeft + i*gap, r = sScale(m);
       legendG.append("circle").attr("cx",cx).attr("cy",circlesY).attr("r",r).attr("fill","#e6e6e6").attr("fill-opacity",.9).attr("stroke","#000").attr("stroke-opacity",.4);
       legendG.append("text").attr("x",cx).attr("y",circlesY + r + 12).attr("text-anchor","middle").attr("fill", getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#9fb0c6').attr("font-size",11).text(m);
     });
   }
 
-  /* ---------------- Render ---------------- */
+  /* ---------------- Rendering ---------------- */
+  const sizeScale = d3.scaleSqrt().domain(d3.extent(points.map(d=>d.mag).filter(v=>v!=null))).range([1.8, 11]);
+
   function render(){
     const allowNA = document.getElementById("includeNA").checked;
-
-    const hasLocFilter = selectedStates.size>0 || selectedCities.size>0;
 
     const filtered = points.filter(d=>{
       const magOK   = (d.mag  != null && d.mag  >= magRange[0]   && d.mag  <= magRange[1]);
       const yearOK  = (d.year != null && d.year >= yearRange[0]  && d.year <= yearRange[1]);
       const depthOK = d.depth == null ? allowNA : (d.depth >= depthRange[0] && d.depth <= depthRange[1]);
 
+      // Multi-select: if no selections, pass; else match ANY chip.
       let locOK = true;
-      if (hasLocFilter){
-        const inState = d.locStAbbr && selectedStates.has(d.locStAbbr);
-        const inCity  = d.locLabel && selectedCities.has(d.locLabel);
-        locOK = !!(inState || inCity);
+      if (selectedLocs.size > 0){
+        const st = d.locStAbbr || "";
+        const lbl = d.locLabel || "";
+        locOK = (st && selectedLocs.has(st)) || (lbl && selectedLocs.has(lbl));
       }
       return magOK && yearOK && depthOK && locOK;
     });
@@ -576,7 +574,7 @@
 
     sel.enter().append("circle")
       .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
-      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("r", d => sizeScale(d.mag ?? 0))
       .attr("transform", d => {
         const p = projection([d.lon, d.lat]);
         return p ? `translate(${p[0]},${p[1]})` : "translate(-999,-999)";
@@ -594,7 +592,7 @@
       .on("mouseleave", ()=> tooltip.style("opacity", 0));
 
     sel
-      .attr("r", d => size(d.mag ?? magDom[0]))
+      .attr("r", d => sizeScale(d.mag ?? 0))
       .attr("fill", d => d.depth==null ? "#9aa0a6" : color(d.depth))
       .attr("class", d => "quake" + (d.depth==null ? " nodata" : ""))
       .attr("transform", d => {
@@ -607,7 +605,6 @@
 
   drawLegend();
   render();
-  renderChips();
 
   /* ---------------- Zoom ---------------- */
   const zoom = d3.zoom().scaleExtent([0.9, 8]).on("zoom", (ev)=> {
