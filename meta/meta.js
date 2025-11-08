@@ -1,30 +1,12 @@
 // /meta/meta.js
-// Robust Meta page: will render even if loc.csv is missing, and works with
-// either `datetime` or (`date` + `time`).
-
-// --- ensure D3 is available even if the head tags were changed accidentally
-async function ensureD3() {
-  if (window.d3) return;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/d3@7';
-    s.onload = res; s.onerror = rej; document.head.appendChild(s);
-  });
-  if (!window.d3) throw new Error('D3 failed to load');
-  if (!window.d3.Delaunay) {
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/d3-delaunay@6';
-      s.onload = res; s.onerror = rej; document.head.appendChild(s);
-    });
-  }
-}
+// Robust meta page: works with datetime OR date+time; shows demo if CSV missing.
+// Scatter = x: date-only (daily ticks), y: hour, smaller dots, brush with light-blue highlight.
 
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => d3.format(',')(n);
+const day = d3.timeDay;
 
-// ---------- Load rows ----------
-// If CSV not found, we’ll inject a tiny demo so the page never looks empty.
+// -------- Load CSV (safe) --------
 async function loadRows() {
   let rows = [];
   try {
@@ -32,36 +14,35 @@ async function loadRows() {
   } catch (e) {
     console.warn('Could not load meta/loc.csv:', e);
   }
-
-  // If no data, seed demo rows so the UI renders:
   if (!rows || !rows.length) {
+    // tiny demo so the page never looks empty
     const now = new Date();
     rows = [
-      { file: 'demo/a.js',   type: 'js',   author: 'you', datetime: now.toISOString(),                length: 14 },
-      { file: 'demo/b.css',  type: 'css',  author: 'you', datetime: new Date(now-6e7).toISOString(), length: 40 },
-      { file: 'demo/c.html', type: 'html', author: 'you', datetime: new Date(now-9e7).toISOString(), length: 7  },
+      { file:'demo/a.js',   type:'js',   author:'you', datetime:now.toISOString(),                length:14 },
+      { file:'demo/b.css',  type:'css',  author:'you', datetime:new Date(now-6e7).toISOString(), length:40 },
+      { file:'demo/c.html', type:'html', author:'you', datetime:new Date(now-9e7).toISOString(), length:7  },
     ];
     $('#stats')?.insertAdjacentHTML('beforeend',
       `<p class="notice">Showing demo data because <code>meta/loc.csv</code> was not found.
-      To generate it, run <code>npx elocuent -d . -o meta/loc.csv --spaces 2</code> in your repo root and commit the file.</p>`);
+       Generate it with: <code>npx elocuent -d . -o meta/loc.csv --spaces 2</code></p>`);
   }
 
-  // Normalize & derive fields
+  // normalize & derive fields
   rows = rows.filter(r => r.file && (r.datetime || (r.date && r.time)));
   for (const r of rows) {
     const iso = r.datetime || `${r.date}T${r.time}${r.timezone ?? ''}`;
-    r.dt = new Date(iso);
+    r.dt   = new Date(iso);
     if (isNaN(+r.dt)) continue;
-    r.hour  = r.dt.getHours();
-    r.dow   = r.dt.getDay();
+    r.day  = day.floor(r.dt);      // date-only (for vertical alignment)
+    r.hour = r.dt.getHours();      // 0..23
+    r.dow  = r.dt.getDay();        // 0..6
     r.lines = +r.length || 0;
     r.lang  = (r.type || 'other').toLowerCase();
   }
-  // drop any unparsable dates
-  rows = rows.filter(r => r.dt instanceof Date && !isNaN(+r.dt));
-  return rows;
+  return rows.filter(r => r.dt instanceof Date && !isNaN(+r.dt));
 }
 
+// -------- Summary cards --------
 function renderStats(rows) {
   const stats   = $('#stats');
   const grouped = $('#grouped');
@@ -82,17 +63,19 @@ function renderStats(rows) {
     <div class="card"><strong># of Authors</strong><div>${fmt(distinctAuthors)}</div></div>
   `;
 
-  // Extras
+  // extras
   const distinctDays = new Set(rows.map(d => d.dt.toDateString())).size;
   const fileTotals = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.file)
                        .map(([file, lines]) => ({ file, lines }));
   const longestFile = d3.greatest(fileTotals, d => d.lines);
-  const byHour = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.hour)
-                   .map(([hour, lines]) => ({ hour, lines }));
+
+  const byHour  = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.hour)
+                    .map(([hour, lines]) => ({ hour, lines }));
   const peakHour = d3.greatest(byHour, d => d.lines);
+
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const byDow = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.dow)
-                  .map(([dow, lines]) => ({ dow, lines }));
+  const byDow  = d3.rollups(rows, v => d3.sum(v, d => d.lines), d => d.dow)
+                   .map(([dow, lines]) => ({ dow, lines }));
   const peakDow = d3.greatest(byDow, d => d.lines);
 
   extras.innerHTML = `
@@ -111,7 +94,7 @@ function renderStats(rows) {
     </div>
   `;
 
-  // Grouped by language/type
+  // by language/type
   const byLang = d3.rollups(rows, v => ({
     rows: v.length,
     lines: d3.sum(v, d => d.lines)
@@ -126,7 +109,7 @@ function renderStats(rows) {
     </div>
   `).join('');
 
-  // Min/Max by file
+  // min/max by file
   const minFile = d3.least(fileTotals,  d => d.lines);
   const maxFile = d3.greatest(fileTotals, d => d.lines);
 
@@ -140,54 +123,61 @@ function renderStats(rows) {
   `;
 }
 
+// -------- Scatter (date-only x, hour y) --------
 function renderScatter(rows) {
   const svg = d3.select('#scatter');
   svg.selectAll('*').remove();
   if (!rows.length) return;
 
-  const W = 960, H = 540, M = { t: 25, r: 25, b: 60, l: 65 };
+  const W = 960, H = 480, M = { t: 22, r: 24, b: 60, l: 60 };
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
 
   const g = svg.attr('viewBox', `0 0 ${W} ${H}`)
                .append('g')
                .attr('transform', `translate(${M.l},${M.t})`);
 
-  const x = d3.scaleTime()
-              .domain(d3.extent(rows, d => d.dt))
-              .range([0, iw]);
+  // x domain padded by 1 day on each side
+  const d0 = d3.min(rows, d => d.day);
+  const d1 = d3.max(rows, d => d.day);
+  const start = day.offset(day.floor(d0), -1);
+  const end   = day.offset(day.ceil(d1),  +1);
 
-  const y = d3.scaleLinear()
-              .domain([0, 23])
-              .range([ih, 0])
-              .nice();
+  const x = d3.scaleTime().domain([start, end]).range([0, iw]);
+  const y = d3.scaleLinear().domain([0, 23]).range([ih, 0]).nice();
 
+  // area-correct, smaller dots
   const rArea = d3.scaleSqrt()
     .domain([0, d3.quantile(rows.map(d => d.lines).sort(d3.ascending), 0.95) || 1])
-    .range([1.5, 8]);  // smaller dots
+    .range([1.8, 9]);
 
-  const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat('%b %d'));
-  const yAxis = d3.axisLeft(y).ticks(6).tickFormat(h => `${h}:00`);
+  const xAxis = d3.axisBottom(x)
+    .ticks(d3.timeDay.every(1))
+    .tickFormat(d3.timeFormat('%b %d'));
 
-  g.append('g').attr('transform', `translate(0,${ih})`).call(xAxis);
-  g.append('g').call(yAxis);
+  const yAxis = d3.axisLeft(y).ticks(8).tickFormat(h => `${h}:00`);
 
+  g.append('g').attr('class', 'x-axis').attr('transform', `translate(0,${ih})`).call(xAxis);
+  g.append('g').attr('class', 'y-axis').call(yAxis);
+
+  // horizontal grid
   g.append('g').attr('class', 'grid')
     .selectAll('line')
-    .data(y.ticks(6))
+    .data(y.ticks(8))
     .join('line')
-    .attr('x1', 0).attr('x2', iw)
-    .attr('y1', d => y(d)).attr('y2', d => y(d));
+      .attr('x1', 0).attr('x2', iw)
+      .attr('y1', d => y(d)).attr('y2', d => y(d));
 
+  // dots (use date-only for cx so each day is a vertical column)
   const dots = g.append('g').attr('class', 'dots')
     .selectAll('circle').data(rows)
     .join('circle')
-      .attr('cx', d => x(d.dt))
+      .attr('cx', d => x(d.day))
       .attr('cy', d => y(d.hour))
       .attr('r',  d => rArea(d.lines))
       .attr('fill', 'var(--ucsd-navy)')
-      .attr('opacity', 0.85);
+      .attr('opacity', 0.9);
 
-  // Tooltip
+  // tooltip
   const tip = d3.select('#tooltip');
   const fmtDate = d3.timeFormat('%b %d, %Y %H:%M');
   function showTip(d, evt) {
@@ -202,16 +192,18 @@ function renderScatter(rows) {
   }
   const hideTip = () => tip.attr('hidden', true);
 
-  const delaunay = d3.Delaunay.from(rows, d => x(d.dt), d => y(d.hour));
+  // voronoi hover (aligned coords)
+  const delaunay = d3.Delaunay.from(rows, d => x(d.day), d => y(d.hour));
   const vor = delaunay.voronoi([0,0,iw,ih]);
   g.append('g').selectAll('path')
     .data(rows).join('path')
-    .attr('d', (_, i) => vor.renderCell(i))
-    .attr('fill', 'transparent')
-    .on('mousemove', (evt, d) => showTip(d, evt))
-    .on('mouseleave', hideTip);
+      .attr('d', (_, i) => vor.renderCell(i))
+      .attr('fill', 'transparent')
+      .on('mousemove', (evt, d) => showTip(d, evt))
+      .on('mouseleave', hideTip);
 
-  // Brush
+  // brush (highlight selected in LIGHT BLUE)
+  const HILITE = '#7fd3ff'; // light blue you asked for
   const brush = d3.brush().extent([[0,0],[iw,ih]]).on('start brush end', brushed);
   g.append('g').attr('class', 'brush').call(brush);
 
@@ -223,13 +215,14 @@ function renderScatter(rows) {
     if (selection) {
       const [[x0,y0],[x1,y1]] = selection;
       sel = rows.filter(d => {
-        const px = x(d.dt), py = y(d.hour);
+        const px = x(d.day), py = y(d.hour);
         return x0 <= px && px <= x1 && y0 <= py && py <= y1;
       });
     }
 
-    dots.attr('fill', d => sel.length && !sel.includes(d) ? 'var(--accent-weak)' : #006A96)
-        .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.85);
+    dots
+      .attr('fill', d => sel.length && sel.includes(d) ? HILITE : 'var(--ucsd-navy)')
+      .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.95);
 
     selCount.textContent = `Selected: ${fmt(sel.length)}`;
     if (!sel.length) {
@@ -242,16 +235,9 @@ function renderScatter(rows) {
   }
 }
 
-// ---------- boot ----------
+// -------- Boot --------
 (async () => {
-  try {
-    await ensureD3();
-    const rows = await loadRows();
-    renderStats(rows);
-    renderScatter(rows);
-  } catch (e) {
-    console.error(e);
-    $('#stats')?.insertAdjacentHTML('beforeend',
-      `<p class="notice">Meta page failed to initialize. Open DevTools (F12) → Console for details.</p>`);
-  }
+  const rows = await loadRows();
+  renderStats(rows);
+  renderScatter(rows);
 })();

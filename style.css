@@ -522,21 +522,35 @@ html[data-theme="dark"] .pill {
   background: var(--accent-weak-bg); color: var(--text); border: 1px solid var(--border);
 }
 
-#scatter { width: 100%; max-width: 960px; height: 540px;  display: block; background: transparent; }
-#scatter .grid line {
-  stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; opacity: .6;
+#scatter .x-axis text,
+#scatter .y-axis text {
+  font-size: 14px;              /* bump to 16px if you want even bigger */
+  fill: var(--text);
 }
+
+#scatter {
+  width: 100%;
+  max-width: 960px;             /* match the viewBox width */
+  height: 480px;                /* match the viewBox height */
+  display: block;
+  margin: 1rem 0;
+  background: transparent;      /* or var(--accent-weak-bg) */
+}
+
+#scatter .grid line {
+  stroke: var(--border);
+  opacity: .6;
+  shape-rendering: crispEdges;
+}
+
 #tooltip {
-  position: fixed; z-index: 1000;
-  background: var(--card); color: var(--text);
-  padding: .5rem .6rem; border-radius: .5rem;
+  position: fixed;
+  z-index: 1000;
+  background: var(--card);
+  color: var(--text);
+  padding: .5rem .6rem;
+  border-radius: .5rem;
   box-shadow: 0 4px 18px rgba(0,0,0,.18);
   border: 1px solid var(--border);
   pointer-events: none;
-  font: 12px/1.3 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue";
-}
-.brush .selection {
-  fill: color-mix(in oklab, var(--ucsd-gold) 20%, transparent);
-  stroke: var(--ucsd-gold);
-  stroke-width: 1.2;
 }
