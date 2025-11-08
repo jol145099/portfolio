@@ -38,8 +38,10 @@
 
   .row.values{ grid-template-columns: 1fr; }
   .row.values .label{ display:none; }
-  .valuebox{ display:grid; grid-template-columns: auto 70px 10px auto 70px; align-items:center; gap:2px; color:var(--muted); font-size:11.5px; }
+  .valuebox{ display:grid; grid-template-columns: auto 65px 1fr auto 65px; align-items:center; gap:2px; color:var(--muted); font-size:11.5px; }
   input[type="number"]{ background:#0f141c; color:#e8eef7; border:1px solid var(--grid); border-radius:6px; padding:3px 6px; width:70px; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0;}
 
   .checkboxrow label{ display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; margin-top:4px; }
 
@@ -101,7 +103,7 @@
         <div class="row values">
           <div class="valuebox"><span>Min</span><input id="depthMinN" type="number" step="10"><span></span><span>Max</span><input id="depthMaxN" type="number" step="10"></div>
         </div>
-        <div class="checkboxrow"><label><input id="includeNA" type="checkbox"> Include N/A depth</label></div>
+        <div class="checkboxrow"><label><input id="includeNA" type="checkbox"> Include N/A</label></div>
       </div>
 
       <div class="section">
@@ -118,13 +120,13 @@
       <div class="section">
         <div class="row">
           <div class="label">Location</div>
-          <div class="valuespan helper">Add cities (“Long Beach, CA”) or whole states (“CA/Arizona”).</div>
+          <div class="valuespan helper">Add cities or States.</div>
         </div>
         <div class="locbox">
-          <input id="locInput" type="text" placeholder="Type: Phoenix, AZ • CA • Arizona…" autocomplete="off">
+          <input id="locInput" type="text" placeholder="Type: Los Angeles, CA • CA • California…" autocomplete="off">
           <div id="chips" class="chips"></div>
           <div id="locSuggest" class="loc-suggest"></div>
-          <div class="helper">Up to 10 suggestions. Click to add. Backspace on empty box removes last chip. “Clear” removes all.</div>
+          <div class="helper">Click to add. Backspace on empty box removes last chip. “Clear” removes all.</div>
         </div>
         <div class="row values">
           <div class="valuebox" style="grid-template-columns:auto auto;">
