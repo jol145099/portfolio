@@ -1,6 +1,5 @@
-// /meta/meta.js
 // Robust meta page: works with datetime OR date+time; shows demo if CSV missing.
-// Scatter = x: date-only (daily ticks), y: hour, smaller dots, brush with light-blue highlight.
+// Scatter = x: date-only (ticks only where data exists), y: hour, brush with UCSD Gold highlight.
 
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => d3.format(',')(n);
@@ -123,7 +122,7 @@ function renderStats(rows) {
   `;
 }
 
-// -------- Scatter (date-only x, hour y) --------
+// -------- Scatter (date-only x; ticks only where data exists; UCSD Gold highlight) --------
 function renderScatter(rows) {
   const svg = d3.select('#scatter');
   svg.selectAll('*').remove();
@@ -150,8 +149,13 @@ function renderScatter(rows) {
     .domain([0, d3.quantile(rows.map(d => d.lines).sort(d3.ascending), 0.95) || 1])
     .range([1.8, 9]);
 
+  // ticks only for dates that have data
+  const uniqueDays = Array.from(new Set(rows.map(d => +d.day)))
+    .sort((a,b) => a - b)
+    .map(ms => new Date(ms));
+
   const xAxis = d3.axisBottom(x)
-    .ticks(d3.timeDay.every(1))
+    .tickValues(uniqueDays)
     .tickFormat(d3.timeFormat('%b %d'));
 
   const yAxis = d3.axisLeft(y).ticks(8).tickFormat(h => `${h}:00`);
@@ -175,7 +179,7 @@ function renderScatter(rows) {
       .attr('cy', d => y(d.hour))
       .attr('r',  d => rArea(d.lines))
       .attr('fill', 'var(--ucsd-navy)')
-      .attr('opacity', 0.9);
+      .attr('opacity', 0.95);
 
   // tooltip
   const tip = d3.select('#tooltip');
@@ -202,8 +206,9 @@ function renderScatter(rows) {
       .on('mousemove', (evt, d) => showTip(d, evt))
       .on('mouseleave', hideTip);
 
-  // brush (highlight selected in LIGHT BLUE)
-  const HILITE = '#7fd3ff'; // light blue you asked for
+  // brush (highlight selected in UCSD GOLD)
+  const HILITE = 'var(--ucsd-gold)';
+
   const brush = d3.brush().extent([[0,0],[iw,ih]]).on('start brush end', brushed);
   g.append('g').attr('class', 'brush').call(brush);
 
