@@ -266,6 +266,16 @@
     d.locStFull= cs.stFull;
   });
 
+function displayLabel(d){
+  // Always prefer "City, ST". If no city, just "ST".
+  if (d.locCity && d.locStAbbr) return `${d.locCity}, ${d.locStAbbr}`;
+  if (d.locStAbbr) return d.locStAbbr;
+  // Fallbacks if we couldn't parse a state (rare/territories)
+  if (d.locLabel) return d.locLabel;         // already "City, ST" form if present
+  if (d.region)   return d.region;           // last resort
+  return "Location";
+}
+
   // Build unique locations with search forms and state info
   const locMap = new Map(); // label -> {label,count,forms:Set, stAbbr, stFull}
   for (const d of points){
@@ -513,7 +523,7 @@
         ? (d.locCity ? `${d.locCity}, ${d.locStAbbr}` : d.locStAbbr)
         : (d.place || d.region || "Location");
       return `
-        <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${locText}</span></div>
+        <div><b>${d.mag?.toFixed(1) ?? "M?"}</b> — <span style="color:var(--muted)">${displayLabel(d)}</span></div>
         <div>Depth: <b>${d.depth==null ? "N/A" : Math.round(d.depth)+" km"}</b></div>
         <div style="color:var(--muted)">${d.time ? new Date(d.time).toUTCString() : ""}</div>
       `;
