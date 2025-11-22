@@ -71,6 +71,7 @@ async function loadRows() {
     );
   }
 
+  // basic cleanup / derived fields
   rows = rows.filter((r) => r.file && (r.datetime || (r.date && r.time)));
 
   for (const r of rows) {
@@ -82,7 +83,7 @@ async function loadRows() {
     r.hour = r.dt.getHours();
     r.dow = r.dt.getDay();
 
-    // elocuent columns
+    // elocuent numeric columns
     r.lineNo = +r.line || 0; // line number
     r.depthVal = +r.depth || 0; // indentation depth
     r.lenChars = +r.length || 0; // characters in line
@@ -94,7 +95,7 @@ async function loadRows() {
 }
 
 // -------------------------------------------------------------
-// Summary cards at top
+// Summary cards at top  (this is where Total Rows vs Total Lines differ)
 // -------------------------------------------------------------
 function renderStats(rows) {
   const stats = $("#stats");
@@ -104,9 +105,11 @@ function renderStats(rows) {
 
   if (!rows.length) return;
 
+  // ---------- TOTAL ROWS ----------
   const totalRows = rows.length;
 
-  // Per-file max line number gives LOC
+  // ---------- TOTAL LINES ----------
+  // For each file, the max line number in loc.csv is the file's LOC.
   const fileLineMax = d3
     .rollups(
       rows,
@@ -115,7 +118,9 @@ function renderStats(rows) {
     )
     .map(([file, loc]) => ({ file, loc }));
 
-  const totalLoc = d3.sum(fileLineMax, (d) => d.loc);
+  // Sum file lengths to get total lines of code across repo
+  const totalLines = d3.sum(fileLineMax, (d) => d.loc);
+
   const distinctFiles = fileLineMax.length;
   const distinctAuthors = new Set(rows.map((d) => d.author)).size;
 
@@ -124,7 +129,7 @@ function renderStats(rows) {
       totalRows
     )}</em></div>
     <div class="card"><strong>Total Lines</strong><em>${fmt(
-      totalLoc
+      totalLines
     )}</em></div>
     <div class="card"><strong>Total Files</strong><em>${fmt(
       distinctFiles
@@ -134,7 +139,7 @@ function renderStats(rows) {
     )}</em></div>
   `;
 
-  // Extras: days worked, peak hour, peak weekday
+  // ---------- EXTRA STATS: days worked, peak hour, peak weekday ----------
   const distinctDays = new Set(rows.map((d) => d.dt.toDateString())).size;
 
   const byHour = d3
@@ -176,7 +181,7 @@ function renderStats(rows) {
     </div>
   `;
 
-  // By language/type
+  // ---------- BY LANGUAGE / TYPE ----------
   const byLang = d3
     .rollups(
       rows,
@@ -208,7 +213,7 @@ function renderStats(rows) {
     )
     .join("");
 
-  // Min / max file LOC
+  // ---------- MIN / MAX FILE LOC ----------
   const minFile = d3.least(fileLineMax, (d) => d.loc);
   const maxFile = d3.greatest(fileLineMax, (d) => d.loc);
 
@@ -590,6 +595,6 @@ function renderScatter(rows) {
 // -------------------------------------------------------------
 (async () => {
   const rows = await loadRows();
-  renderStats(rows);
-  initFileTimeline(rows); // slider will call renderScatter internally
+  renderStats(rows);        // summary stats (Total Rows vs Total Lines)
+  initFileTimeline(rows);   // slider + dots + summary + scatter
 })();

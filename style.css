@@ -589,6 +589,11 @@ html[data-theme="dark"] .pill {
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
+
+  /* make the file list scroll instead of growing forever */
+  max-height: 18rem;      /* adjust this height as you like */
+  overflow-y: auto;
+  padding-right: 0.5rem;  /* space so content doesn’t sit under scrollbar */
 }
 
 .file-row {
