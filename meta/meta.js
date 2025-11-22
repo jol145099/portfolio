@@ -72,35 +72,43 @@ async function loadRows() {
   return rows.filter((r) => r.dt instanceof Date && !isNaN(+r.dt));
 }
 
+// -------- Summary cards --------
 function renderStats(rows) {
-  const stats   = $("#stats");
+  const stats = $("#stats");
   const grouped = $("#grouped");
-  const minmax  = $("#minmax");
-  const extras  = $("#extras");
+  const minmax = $("#minmax");
+  const extras = $("#extras");
 
   if (!rows.length) return;
 
-  // 1. Total rows = total records in loc.csv
+  // ----- Total rows -----
   const totalRows = rows.length;
 
-  // 2. Total lines (LOC) = sum of max line number per file
-  //    For each file, find its largest `line` value, then sum those.
-  const fileLineCounts = d3.rollups(
+  // ----- Total lines of code (LOC) -----
+  // For each file, take the maximum line number, then sum those.
+  const fileLocPairs = d3.rollups(
     rows,
-    (v) => d3.max(v, (d) => d.line), // max line index in that file
+    (v) => d3.max(v, (d) => d.lineNo || d.line || 0),
     (d) => d.file
   );
-  const totalLines = d3.sum(fileLineCounts, (d) => d[1]);
+  const totalLines = d3.sum(fileLocPairs, (d) => d[1]);
 
-  // 3. Distinct files & authors as before
-  const distinctFiles   = new Set(rows.map((d) => d.file)).size;
+  const distinctFiles = new Set(rows.map((d) => d.file)).size;
   const distinctAuthors = new Set(rows.map((d) => d.author)).size;
 
   stats.innerHTML = `
-    <div class="card"><strong>Total Rows</strong><em>${fmt(totalRows)}</em></div>
-    <div class="card"><strong>Total Lines</strong><em>${fmt(totalLines)}</em></div>
-    <div class="card"><strong>Total Files</strong><em>${fmt(distinctFiles)}</em></div>
-    <div class="card"><strong># of Authors</strong><em>${fmt(distinctAuthors)}</em></div>
+    <div class="card"><strong>Total Rows</strong><em>${fmt(
+      totalRows
+    )}</em></div>
+    <div class="card"><strong>Total Lines</strong><em>${fmt(
+      totalLines
+    )}</em></div>
+    <div class="card"><strong>Total Files</strong><em>${fmt(
+      distinctFiles
+    )}</em></div>
+    <div class="card"><strong># of Authors</strong><em>${fmt(
+      distinctAuthors
+    )}</em></div>
   `;
 
   // ----- extra cards -----
@@ -314,7 +322,7 @@ function renderFileDots(rows) {
     dotsWrap.className = "file-row-dots";
 
     // Each dot ~100 lines, at least 1 dot if file has any lines.
-    const dotsCount = Math.max(1, Math.round(f.loc / 100));
+    const dotsCount = Math.max(1, Math.round(f.loc / 10));
     for (let i = 0; i < dotsCount; i++) {
       const dot = document.createElement("span");
       dot.className = "loc-dot";
