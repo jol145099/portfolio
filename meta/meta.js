@@ -1,79 +1,122 @@
-// Robust meta page: works with datetime OR date+time; shows demo if CSV missing.
-// Scatter = x: date-only (ticks only where data exists), y: hour, brush with UCSD Gold highlight.
-// Lab 8 extension: time slider + "lines of code as dots" per file.
+// meta.js – Lab 8 with:
+//  • Summary cards
+//  • Lines-of-code-as-dots + slider
+//  • Slider also filters "Commits by time of day"
+//  • Legend for language colors
 
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => d3.format(",")(n);
 const day = d3.timeDay;
 
-// -------- Load CSV (safe) --------
+// Color scale reused for dots + legend
+const langColor = d3
+  .scaleOrdinal()
+  .domain(["html", "css", "js", "ts", "svelte", "json", "other"])
+  .range([
+    "#f97316", // html
+    "#22c55e", // css
+    "#0ea5e9", // js
+    "#6366f1", // ts
+    "#e11d48", // svelte
+    "#14b8a6", // json
+    "#6b7280", // other / fallback
+  ]);
+
+// -------------------------------------------------------------
+// Load and normalize CSV
+// -------------------------------------------------------------
 async function loadRows() {
   let rows = [];
   try {
-    rows = await d3.csv("./loc.csv", d3.autoType); // relative to /meta/
+    rows = await d3.csv("./loc.csv", d3.autoType);
   } catch (e) {
     console.warn("Could not load meta/loc.csv:", e);
   }
+
   if (!rows || !rows.length) {
-    // tiny demo so the page never looks empty
     const now = new Date();
     rows = [
       {
-        file: "demo/a.js",
-        type: "js",
-        author: "you",
-        datetime: now.toISOString(),
-        length: 140,
-      },
-      {
-        file: "demo/b.css",
-        type: "css",
-        author: "you",
-        datetime: new Date(now - 6e7).toISOString(),
-        length: 260,
-      },
-      {
-        file: "demo/c.html",
+        file: "demo/index.html",
         type: "html",
         author: "you",
+        datetime: now.toISOString(),
+        line: 30,
+        depth: 2,
+        length: 120,
+      },
+      {
+        file: "demo/style.css",
+        type: "css",
+        author: "you",
+        datetime: new Date(now - 5e7).toISOString(),
+        line: 80,
+        depth: 1,
+        length: 200,
+      },
+      {
+        file: "demo/global.js",
+        type: "js",
+        author: "you",
         datetime: new Date(now - 9e7).toISOString(),
-        length: 70,
+        line: 60,
+        depth: 3,
+        length: 160,
       },
     ];
     $("#stats")?.insertAdjacentHTML(
       "beforeend",
       `<p class="notice">Showing demo data because <code>meta/loc.csv</code> was not found.
-       Generate it with: <code>npx elocuent -d . -o meta/loc.csv --spaces 2</code></p>`
+       Generate it with: <code>npx elocuent -d . -o meta/loc.csv --spaces 2</code>.</p>`
     );
   }
 
-  // normalize & derive fields
   rows = rows.filter((r) => r.file && (r.datetime || (r.date && r.time)));
+
   for (const r of rows) {
     const iso = r.datetime || `${r.date}T${r.time}${r.timezone ?? ""}`;
     r.dt = new Date(iso);
     if (isNaN(+r.dt)) continue;
-    r.day = day.floor(r.dt); // date-only (for vertical alignment)
-    r.hour = r.dt.getHours(); // 0..23
-    r.dow = r.dt.getDay(); // 0..6
-    r.lines = +r.length || 0; // total lines for this row
+
+    r.day = day.floor(r.dt);
+    r.hour = r.dt.getHours();
+    r.dow = r.dt.getDay();
+
+    // elocuent columns
+    r.lineNo = +r.line || 0; // line number
+    r.depthVal = +r.depth || 0; // indentation depth
+    r.lenChars = +r.length || 0; // characters in line
+
     r.lang = (r.type || "other").toLowerCase();
   }
+
   return rows.filter((r) => r.dt instanceof Date && !isNaN(+r.dt));
 }
 
-// -------- Summary cards --------
+// -------------------------------------------------------------
+// Summary cards at top
+// -------------------------------------------------------------
 function renderStats(rows) {
   const stats = $("#stats");
+  const extras = $("#extras");
   const grouped = $("#grouped");
   const minmax = $("#minmax");
-  const extras = $("#extras");
 
   if (!rows.length) return;
 
   const totalRows = rows.length;
-  const totalLines = d3.sum(rows, (d) => d.lines);
-  const distinctFiles = new Set(rows.map((d) => d.file)).size;
+
+  // Per-file max line number gives LOC
+  const fileLineMax = d3
+    .rollups(
+      rows,
+      (v) => d3.max(v, (d) => d.lineNo),
+      (d) => d.file
+    )
+    .map(([file, loc]) => ({ file, loc }));
+
+  const totalLoc = d3.sum(fileLineMax, (d) => d.loc);
+  const distinctFiles = fileLineMax.length;
   const distinctAuthors = new Set(rows.map((d) => d.author)).size;
 
   stats.innerHTML = `
@@ -81,7 +124,7 @@ function renderStats(rows) {
       totalRows
     )}</em></div>
     <div class="card"><strong>Total Lines</strong><em>${fmt(
-      totalLines
+      totalLoc
     )}</em></div>
     <div class="card"><strong>Total Files</strong><em>${fmt(
       distinctFiles
@@ -91,63 +134,67 @@ function renderStats(rows) {
     )}</em></div>
   `;
 
-  // extras
+  // Extras: days worked, peak hour, peak weekday
   const distinctDays = new Set(rows.map((d) => d.dt.toDateString())).size;
-  const fileTotals = d3
-    .rollups(
-      rows,
-      (v) => d3.sum(v, (d) => d.lines),
-      (d) => d.file
-    )
-    .map(([file, lines]) => ({ file, lines }));
 
   const byHour = d3
     .rollups(
       rows,
-      (v) => d3.sum(v, (d) => d.lines),
+      (v) => v.length,
       (d) => d.hour
     )
-    .map(([hour, lines]) => ({ hour, lines }));
-  const peakHour = d3.greatest(byHour, (d) => d.lines);
+    .map(([hour, count]) => ({ hour, count }));
+  const peakHour = d3.greatest(byHour, (d) => d.count);
 
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const byDow = d3
     .rollups(
       rows,
-      (v) => d3.sum(v, (d) => d.lines),
+      (v) => v.length,
       (d) => d.dow
     )
-    .map(([dow, lines]) => ({ dow, lines }));
-  const peakDow = d3.greatest(byDow, (d) => d.lines);
+    .map(([dow, count]) => ({ dow, count }));
+  const peakDow = d3.greatest(byDow, (d) => d.count);
 
   extras.innerHTML = `
     <div class="card"><strong>Days Worked</strong><em>${fmt(
       distinctDays
     )}</em></div>
-    <div class="card"><strong>Peak Hour</strong>
+    <div class="card">
+      <strong>Peak Hour</strong>
       <em>${
-        peakHour ? `${peakHour.hour}:00` : "—"
+        peakHour
+          ? new Date(1970, 0, 1, peakHour.hour).toLocaleTimeString("en", {
+              hour: "numeric",
+            })
+          : "—"
       }</em>
-      <em>${fmt(peakHour?.lines ?? 0)} lines</em>
     </div>
-    <div class="card"><strong>Peak Weekday</strong>
+    <div class="card">
+      <strong>Peak Weekday</strong>
       <em>${peakDow ? dayNames[peakDow.dow] : "—"}</em>
-      <em>${fmt(peakDow?.lines ?? 0)} lines</em>
     </div>
   `;
 
-  // by language/type
+  // By language/type
   const byLang = d3
     .rollups(
       rows,
       (v) => ({
         rows: v.length,
-        lines: d3.sum(v, (d) => d.lines),
+        loc: d3.sum(
+          d3.rollups(
+            v,
+            (vv) => d3.max(vv, (d) => d.lineNo),
+            (d) => d.file
+          ),
+          (d) => d[1]
+        ),
       }),
       (d) => d.lang
     )
     .map(([lang, agg]) => ({ lang, ...agg }))
-    .sort((a, b) => d3.descending(a.lines, b.lines));
+    .sort((a, b) => d3.descending(a.loc, b.loc));
 
   grouped.innerHTML = byLang
     .map(
@@ -155,43 +202,37 @@ function renderStats(rows) {
     <div class="card mini">
       <strong>${d.lang}</strong>
       <em>${fmt(d.rows)} rows</em>
-      <em>${fmt(d.lines)} lines</em>
+      <em>${fmt(d.loc)} lines</em>
     </div>
   `
     )
     .join("");
 
-  // min/max by file
-  const minFile = d3.least(fileTotals, (d) => d.lines);
-  const maxFile = d3.greatest(fileTotals, (d) => d.lines);
+  // Min / max file LOC
+  const minFile = d3.least(fileLineMax, (d) => d.loc);
+  const maxFile = d3.greatest(fileLineMax, (d) => d.loc);
 
   minmax.innerHTML = `
-    <div class="card"><strong>Min Lines (File)</strong>
-      <em>${minFile?.file ?? "—"}</em><em>${fmt(
-    minFile?.lines ?? 0
-  )} lines</em>
+    <div class="card">
+      <strong>Min Lines (File)</strong>
+      <em>${minFile?.file ?? "—"}</em>
+      <em>${fmt(minFile?.loc ?? 0)} lines</em>
     </div>
-    <div class="card"><strong>Max Lines (File)</strong>
-      <em>${maxFile?.file ?? "—"}</em><em>${fmt(
-    maxFile?.lines ?? 0
-  )} lines</em>
+    <div class="card">
+      <strong>Max Lines (File)</strong>
+      <em>${maxFile?.file ?? "—"}</em>
+      <em>${fmt(maxFile?.loc ?? 0)} lines</em>
     </div>
   `;
 }
 
-// ---------------------------------------------------------------------
-// NEW: Lab 8 — slider + "lines of code as dots" per file
-// ---------------------------------------------------------------------
+// -------------------------------------------------------------
+// Lab 8: files-as-dots + slider + summary + legend
+// -------------------------------------------------------------
 
-function initFileTimeline(rows) {
-  const vizEl = document.querySelector("#files-viz");
-  const slider = document.querySelector("#commit-progress");
-  const timeLabel = document.querySelector("#commit-progress-time");
-  if (!vizEl || !slider || !timeLabel || !rows.length) return;
-
-  // Group rows by commit (if available) so progress follows commit history.
-  // If there is no commit column, fall back to one pseudo-commit per row.
-  const commits = d3
+function buildCommits(rows) {
+  // Use commit/hash if present; otherwise group by datetime string
+  return d3
     .groups(
       rows,
       (d) => d.commit || d.hash || d.datetime || d.dt.toISOString()
@@ -202,95 +243,65 @@ function initFileTimeline(rows) {
       lines,
     }))
     .sort((a, b) => d3.ascending(a.dt, b.dt));
-
-  if (!commits.length) return;
-
-  const timeExtent = d3.extent(commits, (d) => d.dt);
-  const timeScale = d3
-    .scaleTime()
-    .domain(timeExtent)
-    .range([0, 100]);
-
-  slider.min = 0;
-  slider.max = 100;
-  slider.value = 100;
-
-  function updateFromSlider() {
-    const pct = Number(slider.value);
-    const cutoff = timeScale.invert(pct);
-
-    timeLabel.textContent = cutoff.toLocaleString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-
-    const activeCommits = commits.filter((c) => c.dt <= cutoff);
-    const activeRows = activeCommits.flatMap((c) => c.lines);
-    renderFileDots(activeRows);
-  }
-
-  slider.addEventListener("input", updateFromSlider);
-  updateFromSlider(); // initial state
 }
 
-function renderFileDots(rows) {
-  const container = document.querySelector("#files-viz");
-  if (!container) return;
+function renderLegend(allRows) {
+  const legendEl = $("#files-legend");
+  if (!legendEl) return;
 
+  const langs = Array.from(new Set(allRows.map((d) => d.lang))).sort();
+  legendEl.innerHTML = langs
+    .map(
+      (lang) => `
+    <span class="legend-item">
+      <span class="legend-swatch" style="background:${langColor(lang)}"></span>
+      ${lang}
+    </span>`
+    )
+    .join("");
+}
+
+function updateFileDots(activeRows) {
+  const container = $("#files-viz");
+  if (!container) return;
   container.innerHTML = "";
 
-  if (!rows.length) {
+  if (!activeRows.length) {
     container.textContent = "No commits in this range yet.";
     return;
   }
 
-  // Aggregate lines by file
+  // Aggregate by file
   const aggregated = d3
     .rollups(
-      rows,
+      activeRows,
       (v) => ({
-        lines: d3.sum(v, (d) => d.lines),
+        loc: d3.max(v, (d) => d.lineNo),
         lang: v[0]?.lang || "other",
       }),
       (d) => d.file
     )
     .map(([file, agg]) => ({ file, ...agg }))
-    .sort((a, b) => d3.descending(a.lines, b.lines));
-
-  const fmtInt = d3.format(",");
-  const colorScale = d3
-    .scaleOrdinal()
-    .domain(["html", "js", "css", "svelte", "ts", "json", "other"])
-    .range([
-      "#f97316", // html-ish
-      "#0ea5e9", // js
-      "#22c55e", // css
-      "#e11d48", // svelte
-      "#6366f1", // ts
-      "#14b8a6", // json
-      "#6b7280", // other
-    ]);
+    .sort((a, b) => d3.descending(a.loc, b.loc));
 
   aggregated.forEach((f) => {
     const row = document.createElement("div");
     row.className = "file-row";
-    row.style.setProperty("--dot-color", colorScale(f.lang));
+    row.style.setProperty("--dot-color", langColor(f.lang));
 
     const meta = document.createElement("div");
     meta.className = "file-row-meta";
-    meta.innerHTML = `<strong>${f.file}</strong><small>${fmtInt(
-      f.lines
-    )} lines</small>`;
+    meta.innerHTML = `
+      <strong>${f.file}</strong>
+      <small>${fmt(f.loc)} lines</small>
+    `;
     row.appendChild(meta);
 
     const dotsWrap = document.createElement("div");
     dotsWrap.className = "file-row-dots";
 
-    // Each dot ~100 lines, at least 1 dot if file has any lines.
-    const dotsCount = Math.max(1, Math.round(f.lines / 100));
+    // each dot ≈ 100 LOC, at least 1 if any lines
+    const dotsCount = Math.max(1, Math.round(f.loc / 100));
     for (let i = 0; i < dotsCount; i++) {
       const dot = document.createElement("span");
       dot.className = "loc-dot";
@@ -302,7 +313,117 @@ function renderFileDots(rows) {
   });
 }
 
-// -------- Scatter (date-only x; ticks only where data exists; UCSD Gold highlight) --------
+function updateFileSummary(activeRows, activeCommits) {
+  const box = $("#files-summary");
+  if (!box) return;
+
+  if (!activeRows.length) {
+    box.innerHTML = "<p>No activity in this range yet.</p>";
+    return;
+  }
+
+  const commitsCount = activeCommits.length;
+
+  // per-file max line number for LOC stats
+  const perFile = d3
+    .rollups(
+      activeRows,
+      (v) => d3.max(v, (d) => d.lineNo),
+      (d) => d.file
+    )
+    .map(([file, loc]) => ({ file, loc }));
+
+  const fileCount = perFile.length;
+  const totalLoc = d3.sum(perFile, (d) => d.loc);
+
+  const maxDepth = d3.max(activeRows, (d) => d.depthVal) ?? 0;
+  const longestLine = d3.max(activeRows, (d) => d.lenChars) ?? 0;
+  const maxLines = d3.max(perFile, (d) => d.loc) ?? 0;
+
+  box.innerHTML = `
+    <div class="summary-card">
+      <span class="label">COMMITS</span>
+      <span class="value">${fmt(commitsCount)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">FILES</span>
+      <span class="value">${fmt(fileCount)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">TOTAL LOC</span>
+      <span class="value">${fmt(totalLoc)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">MAX DEPTH</span>
+      <span class="value">${fmt(maxDepth)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">LONGEST LINE</span>
+      <span class="value">${fmt(longestLine)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="label">MAX LINES</span>
+      <span class="value">${fmt(maxLines)}</span>
+    </div>
+  `;
+}
+
+function initFileTimeline(allRows) {
+  const slider = $("#commit-progress");
+  const timeLabel = $("#commit-progress-time");
+  if (!slider || !timeLabel || !allRows.length) {
+    // fallback: render full scatter if slider missing
+    renderScatter(allRows);
+    return;
+  }
+
+  const commits = buildCommits(allRows);
+  if (!commits.length) {
+    renderScatter(allRows);
+    return;
+  }
+
+  const timeExtent = d3.extent(commits, (c) => c.dt);
+  const sliderScale = d3
+    .scaleTime()
+    .domain(timeExtent)
+    .range([0, 100]);
+
+  slider.min = 0;
+  slider.max = 100;
+  slider.value = 100;
+
+  // legend does not depend on slider
+  renderLegend(allRows);
+
+  function onChange() {
+    const pct = Number(slider.value);
+    const cutoff = sliderScale.invert(pct);
+
+    timeLabel.textContent = cutoff.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+    const activeCommits = commits.filter((c) => c.dt <= cutoff);
+    const activeRows = activeCommits.flatMap((c) => c.lines);
+
+    // update files view + summary + scatter
+    updateFileDots(activeRows);
+    updateFileSummary(activeRows, activeCommits);
+    renderScatter(activeRows);
+  }
+
+  slider.addEventListener("input", onChange);
+  onChange(); // initial state => also draws scatter
+}
+
+// -------------------------------------------------------------
+// Scatterplot (same look; filtered by slider subset)
+// -------------------------------------------------------------
 function renderScatter(rows) {
   const svg = d3.select("#scatter");
   svg.selectAll("*").remove();
@@ -319,12 +440,6 @@ function renderScatter(rows) {
     .append("g")
     .attr("transform", `translate(${M.l},${M.t})`);
 
-  // x domain padded by 1 day on each side
-  const d0 = d3.min(rows, (d) => d.day);
-  const d1 = d3.max(rows, (d) => d.day);
-  const start = day.offset(day.floor(d0), -1);
-  const end = day.offset(day.ceil(d1), +1);
-
   const uniqueDays = Array.from(new Set(rows.map((d) => +d.day)))
     .sort((a, b) => a - b)
     .map((ms) => new Date(ms));
@@ -336,23 +451,21 @@ function renderScatter(rows) {
     .padding(0.5);
   const y = d3.scaleLinear().domain([0, 23]).range([ih, 0]).nice();
 
-  // area-correct, smaller dots
   const rArea = d3
     .scaleSqrt()
     .domain([
       0,
       d3.quantile(
-        rows.map((d) => d.lines).sort(d3.ascending),
+        rows.map((d) => d.lenChars || 1).sort(d3.ascending),
         0.95
       ) || 1,
     ])
-    .range([1.8, 9]);
+    .range([2, 16]);
 
   const xAxis = d3
     .axisBottom(x)
     .tickValues(uniqueDays)
     .tickFormat(d3.timeFormat("%m/%d"));
-
   const yAxis = d3
     .axisLeft(y)
     .ticks(8)
@@ -366,9 +479,9 @@ function renderScatter(rows) {
     .attr("class", "x-axis")
     .attr("transform", `translate(0,${ih})`)
     .call(xAxis);
+
   g.append("g").attr("class", "y-axis").call(yAxis);
 
-  // horizontal grid
   g.append("g")
     .attr("class", "grid")
     .selectAll("line")
@@ -379,7 +492,6 @@ function renderScatter(rows) {
     .attr("y1", (d) => y(d))
     .attr("y2", (d) => y(d));
 
-  // dots (use date-only for cx so each day is a vertical column)
   const dots = g
     .append("g")
     .attr("class", "dots")
@@ -388,30 +500,28 @@ function renderScatter(rows) {
     .join("circle")
     .attr("cx", (d) => x(d.day))
     .attr("cy", (d) => y(d.hour))
-    .attr("r", (d) => rArea(d.lines))
+    .attr("r", (d) => rArea(d.lenChars || 1))
     .attr("fill", "var(--ucsd-navy)")
     .attr("opacity", 0.95);
 
-  // tooltip
   const tip = d3.select("#tooltip");
   const fmtDate = d3.timeFormat("%b %d, %Y %H:%M");
   function showTip(d, evt) {
     tip
       .attr("hidden", null)
       .html(
-        `
-      <strong>${d.file}</strong><br>
-      ${d.author ?? "—"}<br>
-      ${fmtDate(d.dt)}<br>
-      lines: ${fmt(d.lines)}
-    `
+        `<strong>${d.file}</strong><br>${d.author ?? "—"}<br>${fmtDate(
+          d.dt
+        )}<br>Line: ${fmt(d.lineNo)}&nbsp;&bull;&nbsp;Depth: ${
+          d.depthVal
+        }&nbsp;&bull;&nbsp;Len: ${fmt(d.lenChars)}`
       );
-    const { clientX: xv, clientY: yv } = evt;
-    tip.style("left", `${xv + 12}px`).style("top", `${yv + 12}px`);
+    tip
+      .style("left", `${evt.clientX + 12}px`)
+      .style("top", `${evt.clientY + 12}px`);
   }
   const hideTip = () => tip.attr("hidden", true);
 
-  // voronoi hover (aligned coords)
   const delaunay = d3.Delaunay.from(
     rows,
     (d) => x(d.day),
@@ -427,9 +537,7 @@ function renderScatter(rows) {
     .on("mousemove", (evt, d) => showTip(d, evt))
     .on("mouseleave", hideTip);
 
-  // brush (highlight selected in UCSD GOLD)
   const HILITE = "var(--ucsd-gold)";
-
   const brush = d3
     .brush()
     .extent([
@@ -450,8 +558,8 @@ function renderScatter(rows) {
         [x1, y1],
       ] = selection;
       sel = rows.filter((d) => {
-        const px = x(d.day),
-          py = y(d.hour);
+        const px = x(d.day);
+        const py = y(d.hour);
         return x0 <= px && px <= x1 && y0 <= py && py <= y1;
       });
     }
@@ -477,10 +585,11 @@ function renderScatter(rows) {
   }
 }
 
-// -------- Boot --------
+// -------------------------------------------------------------
+// Bootstrap
+// -------------------------------------------------------------
 (async () => {
   const rows = await loadRows();
   renderStats(rows);
-  initFileTimeline(rows); // NEW Lab 8 section
-  renderScatter(rows);
+  initFileTimeline(rows); // slider will call renderScatter internally
 })();

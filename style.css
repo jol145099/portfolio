@@ -555,16 +555,13 @@ html[data-theme="dark"] .pill {
   pointer-events: none;
 }
 
-/* ============================================================
-   LAB 8 – Time slider + lines-of-code dots
-   ============================================================ */
+/* ========= Lab 8 – slider + file dots base styles ========= */
 
 .code-timeline-controls {
   margin: 1.25rem 0 0.75rem;
 }
 
 .code-timeline-controls label {
-  /* override the global "label { display:grid }" */
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -591,7 +588,7 @@ html[data-theme="dark"] .pill {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 .file-row {
@@ -630,7 +627,62 @@ html[data-theme="dark"] .pill {
   background: var(--dot-color, #4b5563);
 }
 
+/* ========= Legend under slider ========= */
+
+.files-legend {
+  margin: 0.35rem 0 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.85rem;
+}
+
+.files-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.files-legend .legend-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #ccc;
+}
+
+/* ========= Summary strip below file dots ========= */
+
+.files-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.files-summary .summary-card {
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.6rem;
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.files-summary .summary-card .label {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.files-summary .summary-card .value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* dark theme tweaks */
+html[data-theme="dark"] .files-summary .summary-card,
 html[data-theme="dark"] .file-row {
   background: color-mix(in oklab, var(--ucsd-navy) 55%, #111);
 }
-

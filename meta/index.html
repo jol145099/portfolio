@@ -27,7 +27,7 @@
       website.
     </p>
 
-    <!-- Summary stats (unchanged) -->
+    <!-- Summary stats -->
     <section aria-labelledby="stats-h">
       <h2 id="stats-h">Summary Statistics</h2>
       <div class="stats-grid" id="stats"></div>
@@ -36,7 +36,7 @@
       <div class="stats-grid" id="minmax"></div>
     </section>
 
-    <!-- NEW: Lines of code as dots + time slider (Lab 8 section) -->
+    <!-- Lines of Code as Dots + time slider (Lab 8 section) -->
     <section aria-labelledby="files-h">
       <h2 id="files-h">Lines of Code as Dots</h2>
       <p>
@@ -58,21 +58,35 @@
         </label>
       </div>
 
-      <!-- filled by meta.js -->
+      <!-- legend for languages -->
+      <div id="files-legend" class="files-legend" aria-label="Language legend"></div>
+
+      <!-- dots by file (updates with slider) -->
       <div id="files-viz" class="files-viz" aria-label="Lines of code by file"></div>
+
+      <!-- summary that updates with slider -->
+      <div
+        id="files-summary"
+        class="files-summary"
+        aria-label="Summary for selected commits"
+      ></div>
     </section>
 
-    <!-- Existing scatterplot section (unchanged) -->
+    <!-- Commits scatter -->
     <section aria-labelledby="scatter-h">
-      <h2 id="scatter-h">Commits by Time of day</h2>
+      <h2 id="scatter-h">Commits by Time of Day</h2>
 
       <div class="scatter-controls">
         <span id="sel-count" class="pill">Selected: 0</span>
         <span id="lang-breakdown" class="pill">Languages Used: —</span>
       </div>
 
-      <svg id="scatter" viewBox="0 0 960 480" role="img"
-           aria-label="Scatterplot of commits"></svg>
+      <svg
+        id="scatter"
+        viewBox="0 0 960 480"
+        role="img"
+        aria-label="Scatterplot of commits"
+      ></svg>
       <div id="tooltip" class="tooltip" hidden></div>
     </section>
   </main>
@@ -81,7 +95,7 @@
     <small>&copy; <span id="year"></span> JoJo Lin</small>
   </footer>
   <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
+    document.getElementById("year").textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
