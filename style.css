@@ -555,169 +555,73 @@ html[data-theme="dark"] .pill {
   pointer-events: none;
 }
 
-/* ================== META PAGE (Lab 8) ================== */
+/* ----- Meta page: slider + files viz (Lab 8 style) ----- */
 
-.meta-page h1 {
-  margin-top: 1.5rem;
+.meta-controls {
+  margin: 1rem 0;
+  display: flex;
 }
 
-.meta-section {
-  margin-top: 2.25rem;
-}
-
-/* Summary cards: already styled, just minor tweak for em text */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
-}
-
-.stats-grid .card {
-  background: var(--card, #edf1f5);
-  border: 1px solid var(--border);
-  border-radius: 0.7rem;
-  padding: 0.75rem 0.9rem;
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-.stats-grid .card strong {
-  color: var(--ucsd-navy);
-}
-
-.stats-grid .card em {
-  display: block;
-  margin-top: 0.25rem;
-  font-style: italic;
-  color: color-mix(in srgb, var(--ucsd-navy) 60%, white);
-}
-
-/* Slider + controls */
-.slider-panel {
-  margin-top: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.slider-label-row {
+.commit-filter {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.35rem;
-}
-
-.slider-label-row label {
-  font-weight: 600;
-}
-
-.range-wrapper {
-  position: relative;
-  max-width: 26rem;
-}
-
-/* two stacked range inputs */
-.range-wrapper input[type="range"] {
-  position: absolute;
-  left: 0;
-  right: 0;
   width: 100%;
-  pointer-events: none;
-  background: transparent;
-  margin: 0;
 }
 
-.range-wrapper input[type="range"]::-webkit-slider-thumb {
-  pointer-events: auto;
+#commit-progress {
+  flex: 1;
 }
 
-.range-wrapper input[type="range"]::-moz-range-thumb {
-  pointer-events: auto;
+#commit-time {
+  font-feature-settings: "tnum";
 }
 
-/* base track / thumb styling */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border);
-}
+/* Files (lines-of-code-as-dots) layout */
 
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--ucsd-gold);
-  border: 2px solid var(--ucsd-navy);
-  box-shadow: 0 0 0 2px var(--page-bg, white);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--ucsd-gold);
-  border: 2px solid var(--ucsd-navy);
-}
-
-/* scatter axes + grid */
-#scatter .x-axis text,
-#scatter .y-axis text {
-  font-size: 13px;
-  fill: var(--text);
-}
-
-#scatter .grid line {
-  stroke: var(--border);
-  opacity: 0.6;
-  shape-rendering: crispEdges;
-}
-
-/* Tooltip */
-.tooltip {
-  position: fixed;
-  z-index: 1000;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.6rem;
-  background: var(--card, #ffffff);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-  pointer-events: none;
-  font-size: 0.85rem;
-}
-
-/* Scrolly layout */
-.scrolly {
+#files {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
-  gap: 1.25rem;
+  grid-template-columns: 1fr 4fr;
+  gap: 0.25rem 1rem;
+  margin-top: 1rem;
+}
+
+#files > div {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+#files dt {
+  grid-column: 1;
+}
+
+#files dt code {
+  display: block;
+}
+
+#files dt code small {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+#files dd {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  margin-top: 1.5rem;
+  align-content: flex-start;
+  gap: 0.15em;
+  padding-top: 0.6em;
+  margin-left: 0;
 }
 
-.scrolly__graphic {
-  position: sticky;
-  top: 6rem;
-}
-
-.scrolly__text .step {
-  background: var(--accent-weak-bg, #f3f5f8);
-  border-radius: 0.75rem;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--border);
-  margin-bottom: 1rem;
-}
-
-/* Responsive: stack scrolly on small screens */
-@media (max-width: 800px) {
-  .scrolly {
-    grid-template-columns: 1fr;
-  }
-
-  .scrolly__graphic {
-    position: static;
-  }
+/* each dot; color is set via --loc-color from JS */
+.loc {
+  width: 0.5em;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--loc-color, #2b82cb);
 }
 

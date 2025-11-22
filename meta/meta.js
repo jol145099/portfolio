@@ -1,493 +1,356 @@
-// meta.js — Lab 8 version
-// - Two-handled date range slider (indices into uniqueDays)
-// - Scatterplot (equal spacing per day, 12-hour y-axis, gold selection)
-// - Summary statistics
-// - Unit visualization + 4-step scrollytelling with Scrollama
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-const $ = (s) => document.querySelector(s);
-const fmt = d3.format(',');
-const day = d3.timeDay;
+// ---------- Load and preprocess data ----------
 
-let allRows = [];
-let uniqueDays = [];
-let dayIndexMap = new Map();
-let units = [];
-
-let mostActiveDay = null;
-let mostActiveDow = null;
-let topAuthor = null;
-
-// ---------------------------------------------------------------------
-// LOAD + PREP DATA
-// ---------------------------------------------------------------------
-async function loadRows() {
-  let rows = [];
-  try {
-    rows = await d3.csv('./loc.csv', d3.autoType);
-  } catch (err) {
-    console.warn('Could not load loc.csv, using demo data.', err);
-    const now = new Date();
-    rows = [
-      { file: 'demo/index.html',  type: 'html', author: 'you', datetime: now.toISOString(), length: 150 },
-      { file: 'demo/style.css',   type: 'css',  author: 'you', datetime: new Date(now - 6e7).toISOString(), length: 200 },
-      { file: 'demo/global.js',   type: 'js',   author: 'you', datetime: new Date(now - 12e7).toISOString(), length: 120 },
-    ];
-    const notice = document.createElement('p');
-    notice.className = 'notice';
-    notice.innerHTML = `
-      Showing demo data because <code>meta/loc.csv</code> was not found.
-      Generate it with:
-      <code>npx elocuent -d . -o meta/loc.csv --spaces 2</code>.
-    `;
-    $('#stats-overall')?.appendChild(notice);
-  }
-
-  // Normalize and derive fields
-  const cleaned = [];
-  for (const r of rows) {
-    const iso = r.datetime || `${r.date}T${r.time}${r.timezone ?? ''}`;
-    const dt = new Date(iso);
-    if (!(dt instanceof Date) || isNaN(+dt)) continue;
-
-    const dayOnly = day.floor(dt);
-    cleaned.push({
-      ...r,
-      dt,
-      day: dayOnly,
-      hour: dt.getHours(),
-      dow: dt.getDay(),
-      lines: +r.length || 0,
-      lang: (r.type || 'other').toLowerCase(),
-      author: r.author || 'Unknown'
-    });
-  }
-  return cleaned;
-}
-
-function computeDerived() {
-  // Unique days and mapping to indices
-  uniqueDays = Array.from(new Set(allRows.map(d => +d.day)))
-    .sort((a, b) => a - b)
-    .map(ms => new Date(ms));
-
-  dayIndexMap = new Map(uniqueDays.map((d, i) => [+d, i]));
-  allRows.forEach(r => {
-    r.dayIdx = dayIndexMap.get(+r.day);
+async function loadData() {
+  const rows = await d3.csv("./loc.csv", (d) => {
+    const datetime = new Date(d.datetime);
+    return {
+      ...d,
+      line: +d.line,
+      depth: +d.depth,
+      length: +d.length,
+      datetime,
+    };
   });
-
-  // Most active day (by total lines)
-  const byDay = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => +d.day);
-  const maxDay = d3.greatest(byDay, d => d[1]);
-  mostActiveDay = maxDay ? new Date(maxDay[0]) : null;
-
-  // Most active weekday (0..6)
-  const byDow = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => d.dow);
-  const maxDow = d3.greatest(byDow, d => d[1]);
-  mostActiveDow = maxDow ? maxDow[0] : null;
-
-  // Top author (by lines)
-  const byAuthor = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => d.author);
-  const maxAuthor = d3.greatest(byAuthor, d => d[1]);
-  topAuthor = maxAuthor ? maxAuthor[0] : null;
+  return rows;
 }
 
-// ---------------------------------------------------------------------
-// SUMMARY STATS
-// ---------------------------------------------------------------------
-function renderStats() {
-  const overall = $('#stats-overall');
-  const extra   = $('#stats-extra');
-  const langDiv = $('#stats-lang');
-  const minmax  = $('#stats-minmax');
+function processCommits(data) {
+  return d3
+    .groups(data, (d) => d.commit)
+    .map(([commit, lines]) => {
+      const first = lines[0];
+      const { author, date, time, timezone, datetime } = first;
 
-  if (!allRows.length) return;
+      const ret = {
+        id: commit,
+        url: first.url || "",
+        author,
+        date,
+        time,
+        timezone,
+        datetime,
+        // hour as decimal for scatterplot
+        hourFrac: datetime.getHours() + datetime.getMinutes() / 60,
+        // how many lines in this commit
+        totalLines: lines.length,
+      };
 
-  const totalRows     = allRows.length;
-  const totalLines    = d3.sum(allRows, d => d.lines);
-  const distinctFiles = new Set(allRows.map(d => d.file)).size;
-  const distinctAuth  = new Set(allRows.map(d => d.author)).size;
+      // keep original line data, but hide it from console.log
+      Object.defineProperty(ret, "lines", {
+        value: lines,
+        enumerable: false,
+      });
 
-  overall.innerHTML = `
-    <div class="card"><strong>Total Rows</strong><div>${fmt(totalRows)}</div></div>
-    <div class="card"><strong>Total Lines</strong><div>${fmt(totalLines)}</div></div>
-    <div class="card"><strong>Total Files</strong><div>${fmt(distinctFiles)}</div></div>
-    <div class="card"><strong># of Authors</strong><div>${fmt(distinctAuth)}</div></div>
-  `;
-
-  // Extra: days worked, peak hour, peak weekday
-  const daysWorked = new Set(allRows.map(d => d.day.toDateString())).size;
-  const byHour = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => d.hour)
-    .map(([h, lines]) => ({ hour: h, lines }));
-  const peakHour = d3.greatest(byHour, d => d.lines);
-
-  const byDow = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => d.dow)
-    .map(([dow, lines]) => ({ dow, lines }));
-  const peakDow = d3.greatest(byDow, d => d.lines);
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  extra.innerHTML = `
-    <div class="card">
-      <strong>Days Worked</strong>
-      <div>${fmt(daysWorked)}</div>
-    </div>
-    <div class="card">
-      <strong>Peak Hour</strong>
-      <div>${formatHour12(peakHour?.hour ?? 0)}</div>
-      <em>${fmt(peakHour?.lines ?? 0)} lines</em>
-    </div>
-    <div class="card">
-      <strong>Peak Weekday</strong>
-      <div>${peakDow ? dayNames[peakDow.dow] : '—'}</div>
-      <em>${fmt(peakDow?.lines ?? 0)} lines</em>
-    </div>
-  `;
-
-  // By language/type
-  const byLang = d3.rollups(
-    allRows,
-    v => ({
-      rows: v.length,
-      lines: d3.sum(v, d => d.lines)
-    }),
-    d => d.lang
-  )
-    .map(([lang, agg]) => ({ lang, ...agg }))
-    .sort((a, b) => d3.descending(a.lines, b.lines));
-
-  langDiv.innerHTML = byLang.map(d => `
-    <div class="card mini">
-      <strong>${d.lang}</strong>
-      <div>${fmt(d.rows)} rows</div>
-      <em>${fmt(d.lines)} lines</em>
-    </div>
-  `).join('');
-
-  // Min / max file
-  const fileTotals = d3.rollups(allRows, v => d3.sum(v, d => d.lines), d => d.file)
-    .map(([file, lines]) => ({ file, lines }));
-  const minFile = d3.least(fileTotals, d => d.lines);
-  const maxFile = d3.greatest(fileTotals, d => d.lines);
-
-  minmax.innerHTML = `
-    <div class="card">
-      <strong>Min Lines (File)</strong>
-      <div>${minFile?.file ?? '—'}</div>
-      <em>${fmt(minFile?.lines ?? 0)} lines</em>
-    </div>
-    <div class="card">
-      <strong>Max Lines (File)</strong>
-      <div>${maxFile?.file ?? '—'}</div>
-      <em>${fmt(maxFile?.lines ?? 0)} lines</em>
-    </div>
-  `;
+      return ret;
+    })
+    .sort((a, b) => d3.ascending(a.datetime, b.datetime));
 }
 
-// ---------------------------------------------------------------------
-// RANGE SLIDER + SCATTER
-// ---------------------------------------------------------------------
-function initSliderAndScatter() {
-  const startInput = $('#date-start');
-  const endInput   = $('#date-end');
-  const label      = $('#range-label');
+// ---------- Summary statistics ----------
 
-  if (!uniqueDays.length) {
-    startInput.disabled = true;
-    endInput.disabled = true;
+function renderCommitInfo(data, commits) {
+  const dl = d3.select("#stats").append("dl").attr("class", "stats");
+
+  const fmtInt = d3.format(",");
+
+  // 1) total rows
+  dl.append("dt").text("Total rows");
+  dl.append("dd").text(fmtInt(data.length));
+
+  // 2) total lines of code (max line per file, summed)
+  const totalLines = d3.sum(
+    d3.rollups(
+      data,
+      (v) => d3.max(v, (d) => d.line),
+      (d) => d.file
+    ),
+    (d) => d[1]
+  );
+  dl.append("dt").text("Total lines");
+  dl.append("dd").text(fmtInt(totalLines));
+
+  // 3) number of files
+  const numFiles = d3.rollups(
+    data,
+    (v) => v.length,
+    (d) => d.file
+  ).length;
+  dl.append("dt").text("Total files");
+  dl.append("dd").text(fmtInt(numFiles));
+
+  // 4) number of authors
+  const numAuthors = d3.rollups(
+    data,
+    (v) => v.length,
+    (d) => d.author
+  ).length;
+  dl.append("dt").text("# of Authors");
+  dl.append("dd").text(fmtInt(numAuthors));
+
+  // 5) days worked
+  const daysWorked = d3.rollups(
+    data,
+    (v) => v.length,
+    (d) => new Date(d.datetime).toLocaleDateString("en")
+  ).length;
+  dl.append("dt").text("Days Worked");
+  dl.append("dd").text(daysWorked);
+
+  // 6) peak hour
+  const workByHour = d3.rollups(
+    data,
+    (v) => v.length,
+    (d) => new Date(d.datetime).getHours()
+  );
+  const peakHour = d3.greatest(workByHour, (d) => d[1])?.[0];
+  dl.append("dt").text("Peak Hour");
+  dl.append("dd").text(
+    peakHour != null
+      ? new Date(1970, 0, 1, peakHour).toLocaleTimeString("en", {
+          hour: "numeric",
+        })
+      : "—"
+  );
+
+  // 7) peak weekday
+  const workByWeekday = d3.rollups(
+    data,
+    (v) => v.length,
+    (d) =>
+      new Date(d.datetime).toLocaleDateString("en", {
+        weekday: "short",
+      })
+  );
+  const peakWeekday = d3.greatest(workByWeekday, (d) => d[1])?.[0];
+  dl.append("dt").text("Peak Weekday");
+  dl.append("dd").text(peakWeekday ?? "—");
+
+  // 8) lines per language (type)
+  const langGroups = d3
+    .rollups(
+      data,
+      (v) => v.length,
+      (d) => d.type
+    )
+    .sort((a, b) => d3.descending(a[1], b[1]));
+
+  for (const [lang, count] of langGroups) {
+    dl.append("dt").text(lang);
+    dl.append("dd").text(fmtInt(count) + " lines");
+  }
+
+  // 9) min & max file length
+  const fileLengths = d3.rollups(
+    data,
+    (v) => d3.max(v, (d) => d.line),
+    (d) => d.file
+  );
+
+  const minFile = d3.least(fileLengths, (d) => d[1]);
+  const maxFile = d3.greatest(fileLengths, (d) => d[1]);
+
+  if (minFile) {
+    dl.append("dt").text("Min Lines (File)");
+    dl.append("dd").html(
+      `${minFile[0]}<br><small>${fmtInt(minFile[1])} lines</small>`
+    );
+  }
+
+  if (maxFile) {
+    dl.append("dt").text("Max Lines (File)");
+    dl.append("dd").html(
+      `${maxFile[0]}<br><small>${fmtInt(maxFile[1])} lines</small>`
+    );
+  }
+}
+
+// ---------- Scatter plot: commits over time ----------
+
+let xScale;
+let yScale;
+
+function renderScatterPlot(data, commits) {
+  const width = 900;
+  const height = 450;
+  const margin = { top: 10, right: 20, bottom: 40, left: 40 };
+
+  const usable = {
+    left: margin.left,
+    right: width - margin.right,
+    top: margin.top,
+    bottom: height - margin.bottom,
+    width: width - margin.left - margin.right,
+    height: height - margin.top - margin.bottom,
+  };
+
+  const svg = d3
+    .select("#chart")
+    .append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .style("overflow", "visible");
+
+  xScale = d3
+    .scaleTime()
+    .domain(d3.extent(commits, (d) => d.datetime))
+    .range([usable.left, usable.right])
+    .nice();
+
+  yScale = d3.scaleLinear().domain([0, 24]).range([usable.bottom, usable.top]);
+
+  const xAxis = d3.axisBottom(xScale);
+  const yAxis = d3
+    .axisLeft(yScale)
+    .tickFormat((d) =>
+      new Date(1970, 0, 1, d).toLocaleTimeString("en", { hour: "numeric" })
+    );
+
+  svg
+    .append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${usable.bottom})`)
+    .call(xAxis);
+
+  svg
+    .append("g")
+    .attr("class", "y-axis")
+    .attr("transform", `translate(${usable.left}, 0)`)
+    .call(yAxis);
+
+  svg.append("g").attr("class", "dots");
+
+  updateScatterPlot(commits);
+}
+
+function updateScatterPlot(commits) {
+  const svg = d3.select("#chart").select("svg");
+  if (svg.empty()) return;
+
+  const rScale = d3
+    .scaleSqrt()
+    .domain(d3.extent(commits, (d) => d.totalLines))
+    .range([3, 20]);
+
+  const dotsGroup = svg.select("g.dots");
+
+  const sorted = d3.sort(commits, (d) => -d.totalLines);
+
+  dotsGroup
+    .selectAll("circle")
+    .data(sorted, (d) => d.id)
+    .join("circle")
+    .attr("cx", (d) => xScale(d.datetime))
+    .attr("cy", (d) => yScale(d.hourFrac))
+    .attr("r", (d) => rScale(d.totalLines || 1))
+    .attr("class", "commit-dot")
+    .style("fill-opacity", 0.8);
+}
+
+// ---------- Slider filtering (single slider like 2.4) ----------
+
+let timeScale;
+let allCommits = [];
+
+const colors = d3.scaleOrdinal(d3.schemeTableau10);
+
+function setupFiltering(commits) {
+  allCommits = commits;
+
+  timeScale = d3
+    .scaleTime()
+    .domain([
+      d3.min(commits, (d) => d.datetime),
+      d3.max(commits, (d) => d.datetime),
+    ])
+    .range([0, 100]);
+
+  const slider = document.querySelector("#commit-progress");
+  const timeEl = document.querySelector("#commit-time");
+
+  function onTimeSliderChange() {
+    const progress = Number(slider.value);
+    const cutoff = timeScale.invert(progress);
+
+    timeEl.textContent = cutoff.toLocaleString("en", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+    const filtered = allCommits.filter((d) => d.datetime <= cutoff);
+
+    updateScatterPlot(filtered);
+    updateFileDisplay(filtered);
+  }
+
+  slider.addEventListener("input", onTimeSliderChange);
+  onTimeSliderChange(); // initial render
+}
+
+// ---------- Lines of code as dots (Step 2.4 style) ----------
+
+function updateFileDisplay(commits) {
+  const lines = commits.flatMap((d) => d.lines);
+  const container = d3.select("#files");
+
+  if (!lines.length) {
+    container.selectAll("*").remove();
     return;
   }
 
-  const maxIdx = uniqueDays.length - 1;
-  startInput.min = '0';
-  endInput.min   = '0';
-  startInput.max = String(maxIdx);
-  endInput.max   = String(maxIdx);
-  startInput.value = '0';
-  endInput.value   = String(maxIdx);
+  const files = d3
+    .groups(lines, (d) => d.file)
+    .map(([name, lines]) => ({
+      name,
+      lines,
+      type: lines[0].type,
+    }))
+    .sort((a, b) => d3.descending(a.lines.length, b.lines.length));
 
-  const fmtDay = d3.timeFormat('%m/%d');
+  const fmtInt = d3.format(",");
 
-  function updateRangeLabel(s, e) {
-    const startDay = uniqueDays[s];
-    const endDay   = uniqueDays[e];
-    label.textContent = `${fmtDay(startDay)} – ${fmtDay(endDay)}`;
-  }
+  const cards = container
+    .selectAll("div")
+    .data(files, (d) => d.name)
+    .join((enter) =>
+      enter
+        .append("div")
+        .call((div) => {
+          div.append("dt").append("code");
+          div.append("dd");
+        })
+    )
+    .attr("style", (d) => `--loc-color: ${colors(d.type)};`);
 
-  function applyFilter() {
-    let s = +startInput.value;
-    let e = +endInput.value;
-    if (s > e) [s, e] = [e, s];
-
-    updateRangeLabel(s, e);
-
-    const subset = allRows.filter(r => r.dayIdx >= s && r.dayIdx <= e);
-    renderScatter(subset);
-  }
-
-  startInput.addEventListener('input', applyFilter);
-  endInput.addEventListener('input', applyFilter);
-
-  // initial render
-  updateRangeLabel(0, maxIdx);
-  const initialRows = allRows.filter(r => r.dayIdx >= 0 && r.dayIdx <= maxIdx);
-  renderScatter(initialRows);
-}
-
-function formatHour12(h) {
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}${ampm}`;
-}
-
-function renderScatter(rows) {
-  const svg = d3.select('#scatter');
-  svg.selectAll('*').remove();
-  if (!rows.length) return;
-
-  const W = 960, H = 420, M = { t: 20, r: 24, b: 60, l: 60 };
-  const iw = W - M.l - M.r;
-  const ih = H - M.t - M.b;
-
-  const g = svg.attr('viewBox', `0 0 ${W} ${H}`)
-    .append('g')
-    .attr('transform', `translate(${M.l},${M.t})`);
-
-  // x scale: equal spacing per day (scalePoint)
-  const daysForPlot = Array.from(new Set(rows.map(d => +d.day)))
-    .sort((a, b) => a - b)
-    .map(ms => new Date(ms));
-
-  const x = d3.scalePoint()
-    .domain(daysForPlot)
-    .range([0, iw])
-    .padding(0.5);
-
-  // y scale: 0–23 hours
-  const y = d3.scaleLinear()
-    .domain([0, 23])
-    .range([ih, 0])
-    .nice();
-
-  // radius ~ sqrt(lines), but capped
-  const rArea = d3.scaleSqrt()
-    .domain([0, d3.quantile(rows.map(d => d.lines).sort(d3.ascending), 0.95) || 1])
-    .range([1.8, 9]);
-
-  const fmtDay = d3.timeFormat('%m/%d');
-
-  // Axes
-  const xAxis = d3.axisBottom(x).tickFormat(fmtDay);
-  const yAxis = d3.axisLeft(y)
-    .ticks(8)
-    .tickFormat(h => formatHour12(h));
-
-  g.append('g')
-    .attr('class', 'x-axis')
-    .attr('transform', `translate(0,${ih})`)
-    .call(xAxis);
-
-  g.append('g')
-    .attr('class', 'y-axis')
-    .call(yAxis);
-
-  // horizontal grid
-  g.append('g')
-    .attr('class', 'grid')
-    .selectAll('line')
-    .data(y.ticks(8))
-    .join('line')
-    .attr('x1', 0)
-    .attr('x2', iw)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d));
+  // filename + length
+  cards
+    .select("dt code")
+    .html(
+      (d) =>
+        `${d.name}<small>${fmtInt(d.lines.length)} lines</small>`
+    );
 
   // dots
-  const dots = g.append('g')
-    .attr('class', 'dots')
-    .selectAll('circle')
-    .data(rows)
-    .join('circle')
-    .attr('cx', d => x(d.day))
-    .attr('cy', d => y(d.hour))
-    .attr('r', d => rArea(d.lines))
-    .attr('fill', 'var(--ucsd-navy)')
-    .attr('opacity', 0.95);
-
-  // Tooltip
-  const tip = d3.select('#tooltip');
-  const fmtDate = d3.timeFormat('%m/%d/%Y %I:%M %p');
-
-  function showTip(d, evt) {
-    tip.attr('hidden', null).html(`
-      <strong>${d.file}</strong><br>
-      ${d.author}<br>
-      ${fmtDate(d.dt)}<br>
-      ${fmt(d.lines)} lines
-    `);
-    tip.style('left', `${evt.clientX + 12}px`)
-       .style('top', `${evt.clientY + 12}px`);
-  }
-  const hideTip = () => tip.attr('hidden', true);
-
-  // Voronoi hover for easier targeting
-  const delaunay = d3.Delaunay.from(rows, d => x(d.day), d => y(d.hour));
-  const vor = delaunay.voronoi([0, 0, iw, ih]);
-
-  g.append('g')
-    .selectAll('path')
-    .data(rows)
-    .join('path')
-    .attr('d', (_, i) => vor.renderCell(i))
-    .attr('fill', 'transparent')
-    .on('mousemove', (evt, d) => showTip(d, evt))
-    .on('mouseleave', hideTip);
-
-  // Brush selection: highlight with UCSD gold
-  const HILITE = 'var(--ucsd-gold)';
-  const brush = d3.brush()
-    .extent([[0, 0], [iw, ih]])
-    .on('start brush end', brushed);
-
-  g.append('g')
-    .attr('class', 'brush')
-    .call(brush);
-
-  function brushed({ selection }) {
-    const selCount  = $('#sel-count');
-    const langBreak = $('#lang-breakdown');
-
-    let sel = [];
-    if (selection) {
-      const [[x0, y0], [x1, y1]] = selection;
-      sel = rows.filter(d => {
-        const px = x(d.day);
-        const py = y(d.hour);
-        return x0 <= px && px <= x1 && y0 <= py && py <= y1;
-      });
-    }
-
-    dots
-      .attr('fill', d => sel.length && sel.includes(d) ? HILITE : 'var(--ucsd-navy)')
-      .attr('opacity', d => sel.length && !sel.includes(d) ? 0.35 : 0.95);
-
-    selCount.textContent = `Selected: ${fmt(sel.length)}`;
-    if (!sel.length) {
-      langBreak.textContent = 'Languages: —';
-    } else {
-      const by = d3.rollups(sel, v => v.length, d => d.lang)
-        .map(([k, v]) => `${k}:${v}`)
-        .sort();
-      langBreak.textContent = `Languages: ${by.join(', ')}`;
-    }
-  }
+  cards
+    .select("dd")
+    .selectAll("div")
+    .data((d) => d.lines)
+    .join("div")
+    .attr("class", "loc");
 }
 
-// ---------------------------------------------------------------------
-// UNIT VISUALIZATION + SCROLLY
-// ---------------------------------------------------------------------
-function buildUnits() {
-  const units = [];
-  for (const row of allRows) {
-    const count = Math.max(1, Math.round(row.lines / 100)); // 1 dot ~= 100 lines
-    for (let i = 0; i < count; i++) {
-      units.push({
-        id: units.length,
-        row
-      });
-    }
-  }
-  return units;
+// ---------- Main ----------
+
+async function main() {
+  const data = await loadData();
+  const commits = processCommits(data);
+
+  renderCommitInfo(data, commits);
+  renderScatterPlot(data, commits);
+  setupFiltering(commits);
 }
 
-function initUnitViz() {
-  units = buildUnits();
-  const svg = d3.select('#unit-svg');
-  svg.selectAll('*').remove();
-  if (!units.length) return;
-
-  const W = 640;
-  const H = 420;
-  const padding = 32;
-  const cell = 20;
-  const cols = 20;
-
-  const g = svg
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .append('g')
-    .attr('transform', `translate(${padding},${padding})`);
-
-  units.forEach((u, i) => {
-    const col = i % cols;
-    const rowIdx = Math.floor(i / cols);
-    u.x = col * cell;
-    u.y = rowIdx * cell;
-  });
-
-  g.selectAll('circle')
-    .data(units)
-    .join('circle')
-    .attr('cx', d => d.x)
-    .attr('cy', d => d.y)
-    .attr('r', 6)
-    .attr('fill', 'var(--ucsd-navy)')
-    .attr('opacity', 0.85);
-
-  // initial state: show all
-  updateUnitHighlight('all');
-}
-
-function isHighlighted(mode, row) {
-  if (mode === 'all') return true;
-  if (mode === 'today' && mostActiveDay) {
-    return day.floor(row.day).getTime() === day.floor(mostActiveDay).getTime();
-  }
-  if (mode === 'weekday' && mostActiveDow != null) {
-    return row.dow === mostActiveDow;
-  }
-  if (mode === 'author' && topAuthor) {
-    return row.author === topAuthor;
-  }
-  return false;
-}
-
-function updateUnitHighlight(mode = 'all') {
-  const BASE = 'var(--ucsd-navy)';
-  const HI   = 'var(--ucsd-gold)';
-
-  const circles = d3.select('#unit-svg').selectAll('circle');
-
-  circles
-    .transition()
-    .duration(600)
-    .attr('fill', d => (isHighlighted(mode, d.row) ? HI : BASE))
-    .attr('opacity', d => (isHighlighted(mode, d.row) ? 0.95 : 0.2));
-}
-
-function initScrolly() {
-  const scroller = scrollama();
-
-  scroller
-    .setup({
-      step: '#scrolly-steps .step',
-      offset: 0.6,
-    })
-    .onStepEnter(({ element }) => {
-      const mode = element.dataset.step || 'all';
-      updateUnitHighlight(mode);
-    });
-
-  window.addEventListener('resize', () => scroller.resize());
-}
-
-// ---------------------------------------------------------------------
-// BOOTSTRAP
-// ---------------------------------------------------------------------
-(async function init() {
-  allRows = await loadRows();
-  if (!allRows.length) return;
-
-  computeDerived();
-  renderStats();
-  initSliderAndScatter();
-  initUnitViz();
-  initScrolly();
-})();
+main().catch((err) => console.error(err));
