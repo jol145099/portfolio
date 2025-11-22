@@ -21,8 +21,13 @@
 
   <main class="container">
     <h1>Code Meta Analysis</h1>
-    <p>This page visualizes <code>meta/loc.csv</code> created by <code>elocuent</code>, which provides the stats about the code of this website.</p>
+    <p>
+      This page visualizes <code>meta/loc.csv</code> created by
+      <code>elocuent</code>, which provides the stats about the code of this
+      website.
+    </p>
 
+    <!-- Summary stats (unchanged) -->
     <section aria-labelledby="stats-h">
       <h2 id="stats-h">Summary Statistics</h2>
       <div class="stats-grid" id="stats"></div>
@@ -31,6 +36,33 @@
       <div class="stats-grid" id="minmax"></div>
     </section>
 
+    <!-- NEW: Lines of code as dots + time slider (Lab 8 section) -->
+    <section aria-labelledby="files-h">
+      <h2 id="files-h">Lines of Code as Dots</h2>
+      <p>
+        Each dot represents about <strong>100 lines of code</strong>.
+        Use the slider to see how your site grows over time.
+      </p>
+
+      <div class="code-timeline-controls">
+        <label for="commit-progress">
+          <span>Show commits until:</span>
+          <input
+            id="commit-progress"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+          />
+          <time id="commit-progress-time"></time>
+        </label>
+      </div>
+
+      <!-- filled by meta.js -->
+      <div id="files-viz" class="files-viz" aria-label="Lines of code by file"></div>
+    </section>
+
+    <!-- Existing scatterplot section (unchanged) -->
     <section aria-labelledby="scatter-h">
       <h2 id="scatter-h">Commits by Time of day</h2>
 
@@ -39,7 +71,8 @@
         <span id="lang-breakdown" class="pill">Languages Used: —</span>
       </div>
 
-      <svg id="scatter" viewBox="0 0 960 480" role="img" aria-label="Scatterplot of commits"></svg>
+      <svg id="scatter" viewBox="0 0 960 480" role="img"
+           aria-label="Scatterplot of commits"></svg>
       <div id="tooltip" class="tooltip" hidden></div>
     </section>
   </main>
@@ -47,6 +80,8 @@
   <footer class="site-footer">
     <small>&copy; <span id="year"></span> JoJo Lin</small>
   </footer>
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
