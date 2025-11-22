@@ -1,63 +1,124 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Code Meta Analysis</title>
-    <link rel="stylesheet" href="../style.css" />
-  </head>
-  <body>
-    <!-- navigation + theme come from global.js -->
-    <nav data-auto></nav>
+<head>
+  <meta charset="utf-8" />
+  <title>Code Meta Analysis</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <main class="narrow">
-      <header class="page-header">
-        <h1>Code Meta Analysis</h1>
-        <p>
-          This page visualizes <code>meta/loc.csv</code> created by
-          <code>elocuent</code>, which provides stats about the code of this
-          website.
-        </p>
-      </header>
+  <!-- Site styles -->
+  <link rel="stylesheet" href="../style.css" />
 
-      <!-- Summary stats --------------------------------------------------->
-      <section aria-labelledby="stats-heading">
-        <h2 id="stats-heading">Summary statistics</h2>
-        <div id="stats"></div>
-      </section>
+  <!-- D3 & Scrollama -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://unpkg.com/scrollama"></script>
 
-      <!-- Scatter + slider ------------------------------------------------>
-      <section aria-labelledby="commits-heading">
-        <h2 id="commits-heading">Commits: time vs day</h2>
+  <!-- Site bootstrap (nav, theme) -->
+  <script type="module" src="../global.js"></script>
 
-        <div class="meta-controls">
-          <label class="commit-filter">
-            <span>Show commits until:</span>
-            <input
-              id="commit-progress"
-              type="range"
-              min="0"
-              max="100"
-              value="100"
-            />
-            <time id="commit-time"></time>
-          </label>
+  <!-- Page logic -->
+  <script type="module" src="./meta.js" defer></script>
+</head>
+<body>
+  <!-- global.js will inject nav -->
+  <nav></nav>
+
+  <main class="container meta-page">
+    <h1>Code Meta Analysis</h1>
+    <p>
+      This page visualizes <code>meta/loc.csv</code> created by
+      <code>elocuent</code>, showing how and when you worked on this website.
+    </p>
+
+    <!-- SUMMARY STATS =================================================== -->
+    <section aria-labelledby="stats-h" class="meta-section">
+      <h2 id="stats-h">Summary statistics</h2>
+      <div class="stats-grid" id="stats-overall"></div>
+      <div class="stats-grid" id="stats-extra"></div>
+      <div class="stats-grid" id="stats-lang"></div>
+      <div class="stats-grid" id="stats-minmax"></div>
+    </section>
+
+    <!-- RANGE SLIDER + SCATTER ========================================== -->
+    <section aria-labelledby="scatter-h" class="meta-section">
+      <h2 id="scatter-h">Commits: time vs day</h2>
+
+      <div class="slider-panel">
+        <div class="slider-label-row">
+          <label for="date-start">Date range:</label>
+          <span id="range-label" class="pill">—</span>
+        </div>
+        <div class="range-wrapper">
+          <!-- two-handled range slider (indices into uniqueDays) -->
+          <input id="date-start" type="range" min="0" max="1" value="0" />
+          <input id="date-end"   type="range" min="0" max="1" value="1" />
+        </div>
+      </div>
+
+      <div class="scatter-controls">
+        <span id="sel-count" class="pill">Selected: 0</span>
+        <span id="lang-breakdown" class="pill">Languages: —</span>
+      </div>
+
+      <svg id="scatter" viewBox="0 0 960 420" role="img"
+           aria-label="Scatterplot of commits by date and time"></svg>
+      <div id="tooltip" class="tooltip" hidden></div>
+    </section>
+
+    <!-- UNIT VISUALIZATION + SCROLLY ==================================== -->
+    <section aria-labelledby="unit-h" class="meta-section">
+      <h2 id="unit-h">Lines of code as dots</h2>
+      <p class="meta-intro">
+        Each dot represents about <strong>100 lines of code</strong>.
+        Scroll through the story on the right to see how your work changes.
+      </p>
+
+      <div class="scrolly">
+        <div class="scrolly__graphic">
+          <svg id="unit-svg" viewBox="0 0 640 420"></svg>
         </div>
 
-        <div id="chart"></div>
-      </section>
+        <div class="scrolly__text" id="scrolly-steps">
+          <div class="step" data-step="all">
+            <h3>All code</h3>
+            <p>
+              Every dot is ~100 lines of code across the whole project.
+              Together, they show the total size of this site.
+            </p>
+          </div>
 
-      <!-- Lines of code as dots ------------------------------------------->
-      <section aria-labelledby="files-heading">
-        <h2 id="files-heading">Lines of code as dots</h2>
-        <p>
-          Each dot represents about <strong>100 lines of code</strong>.
-          Colors show the language / technology.
-        </p>
-        <dl id="files"></dl>
-      </section>
-    </main>
+          <div class="step" data-step="today">
+            <h3>Most active day</h3>
+            <p>
+              Dots highlighted in gold were written on your
+              <strong>most active day</strong> of coding.
+            </p>
+          </div>
 
-    <script type="module" src="../global.js"></script>
-    <script type="module" src="./meta.js"></script>
-  </body>
+          <div class="step" data-step="weekday">
+            <h3>Most active weekday</h3>
+            <p>
+              Gold dots come from commits on your
+              <strong>most active weekday</strong> (e.g. Friday).
+            </p>
+          </div>
+
+          <div class="step" data-step="author">
+            <h3>Top author</h3>
+            <p>
+              Gold dots show the lines written by the
+              <strong>top author</strong> in this repo (usually you!).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <small>&copy; <span id="year"></span> JoJo Lin</small>
+  </footer>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
 </html>
